@@ -37,15 +37,13 @@ while ($true) {
 
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
-                # CORRECCIÓN DE TEXTO EXTRA SEGURA
+                # CORRECCIÓN DE TEXTO DEFINITIVA
                 $Partes = $TextoRecibido -split " "
-                $ComandoRaw = $Partes[0]
-                $Comando = $ComandoRaw.ToLower()
+                $Comando = ([string]$Partes[0]).ToLower()
                 
                 $Destino = "TODOS"
                 if ($Partes.Count -gt 1) {
-                    $DestinoRaw = $Partes[1]
-                    $Destino = $DestinoRaw.ToUpper()
+                    $Destino = ([string]$Partes[1]).ToUpper()
                 }
 
                 if ($Destino -eq $MiPC.ToUpper() -or $Destino -eq "TODOS") {
@@ -77,7 +75,7 @@ while ($true) {
             }
         }
     } catch {
-        # Error controlado de red
+        # Si se corta internet, espera 3 segundos antes de continuar
         Start-Sleep -Seconds 3
     }
     Start-Sleep -Seconds 2

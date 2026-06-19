@@ -1,10 +1,10 @@
 # ==============================================================================
 # CONFIGURACIÓN DEL BOT DE TELEGRAM (Pon tus datos aquí)
 # ==============================================================================
-$Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg"
-$ChatID = "1018796719"
+$Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # Tu TOKEN real completo aquí
+$ChatID = "1018796719"                                    # Tu ChatID numérico real aquí
 
-$URL    = "https://telegram.org/"
+$URL    = "https://telegram.org"
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
 
@@ -16,11 +16,11 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $MensajeInicio = "🚀 *PC En Línea:* `"$User@$MiPC`""
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio; parse_mode = "Markdown" })
 } catch {}
 
-# Variable interna para rastrear mensajes y no repetir órdenes viejas
 $LastUpdateID = 0
 
 # ==============================================================================
@@ -28,7 +28,6 @@ $LastUpdateID = 0
 # ==============================================================================
 while ($true) {
     try {
-        # Consultar la API de Telegram con técnica de Long Polling para menor consumo de datos
         $Updates = Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=15" -Method Get
         
         foreach ($Update in $Updates.result) {
@@ -36,15 +35,19 @@ while ($true) {
             $TextoRecibido = $Update.message.text
             $RemitenteChatID = $Update.message.chat.id
 
-            # REQUISITO DE SEGURIDAD ABSOLUTO: Solo obedece si el ID coincide exactamente con el tuyo
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
-                # Descomponer el mensaje enviado (ejemplo: /pantalla_off PC-JOEL)
+                # CORRECCIÓN DE TEXTO EXTRA SEGURA
                 $Partes = $TextoRecibido -split " "
-                $Comando = $Partes[0].ToLower()
-                $Destino = if ($Partes.Count -gt 1) { $Partes[1].ToUpper() } else { "TODOS" }
+                $ComandoRaw = $Partes[0]
+                $Comando = $ComandoRaw.ToLower()
+                
+                $Destino = "TODOS"
+                if ($Partes.Count -gt 1) {
+                    $DestinoRaw = $Partes[1]
+                    $Destino = $DestinoRaw.ToUpper()
+                }
 
-                # Filtrar si la orden va dirigida a este equipo en específico o a la red global
                 if ($Destino -eq $MiPC.ToUpper() -or $Destino -eq "TODOS") {
                     
                     switch ($Comando) {
@@ -52,7 +55,6 @@ while ($true) {
                             $rundll = New-Object -ComObject WScript.Shell
                             $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
                             [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
-                            
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Pantalla apagada en $MiPC" })
                         }
                         "/pantalla_on" {
@@ -75,7 +77,8 @@ while ($true) {
             }
         }
     } catch {
-        # En caso de desconexión o parpadeo del internet, espera pacientemente en silencio
+        # Error controlado de red
+        Start-Sleep -Seconds 3
     }
     Start-Sleep -Seconds 2
 }

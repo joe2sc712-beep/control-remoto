@@ -2,7 +2,7 @@
 # CONFIGURACIÓN DEL BOT DE TELEGRAM (Pon tus datos aquí)
 # ==============================================================================
 $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # Tu TOKEN real completo aquí
-$ChatID = "1018796719"                                    # Tu ChatID numérico real aquí
+$ChatID = "8935867266"                                    # Tu ChatID numérico real aquí
 
 
 $URL    = "https://telegram.org"

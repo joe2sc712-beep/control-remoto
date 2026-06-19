@@ -4,79 +4,19 @@
 $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # Tu TOKEN real completo aquí
 $ChatID = "1018796719"                                    # Tu ChatID numérico real aquí
 
+
 $URL    = "https://telegram.org"
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
 
-# Registrar APIs de pantalla de Windows de forma segura
-try {
-    $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
-    Add-Type -MemberDefinition $MethodDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
-} catch {}
+Write-Host "Iniciando prueba de conexión forzada a Telegram..." -ForegroundColor Cyan
 
-# --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
-try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $MensajeInicio = "🚀 *PC En Línea:* `"$User@$MiPC`""
-    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio; parse_mode = "Markdown" })
-} catch {}
+# Habilitar protocolos TLS 1.2 obligatorios
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$LastUpdateID = 0
+# Intentar el envío SIN bloques TRY/CATCH para que muestre el error en rojo si falla
+$MensajeInicio = "🚀 PRUEBA DIRECTA: $User@$MiPC"
 
-# ==============================================================================
-# BUCLE PRINCIPAL (Monitoreo de internet constante)
-# ==============================================================================
-while ($true) {
-    try {
-        $Updates = Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=15" -Method Get
-        
-        foreach ($Update in $Updates.result) {
-            $LastUpdateID = $Update.update_id + 1
-            $TextoRecibido = $Update.message.text
-            $RemitenteChatID = $Update.message.chat.id
+Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio }
 
-            if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
-                
-                # CORRECCIÓN DE TEXTO DEFINITIVA
-                $Partes = $TextoRecibido -split " "
-                $Comando = ([string]$Partes[0]).ToLower()
-                
-                $Destino = "TODOS"
-                if ($Partes.Count -gt 1) {
-                    $Destino = ([string]$Partes[1]).ToUpper()
-                }
-
-                if ($Destino -eq $MiPC.ToUpper() -or $Destino -eq "TODOS") {
-                    
-                    switch ($Comando) {
-                        "/pantalla_off" {
-                            $rundll = New-Object -ComObject WScript.Shell
-                            $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
-                            [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Pantalla apagada en $MiPC" })
-                        }
-                        "/pantalla_on" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            $wsh.SendKeys("{SHIFT}")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Pantalla encendida en $MiPC" })
-                        }
-                        "/notepad" {
-                            notepad.exe
-                            Start-Sleep -Milliseconds 500
-                            $wsh = New-Object -ComObject WScript.Shell
-                            $wsh.SendKeys("Te estoy observando por Internet... 👀")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Bloc de notas abierto en $MiPC" })
-                        }
-                        "/lista" {
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "👋 Reportándose desde Internet: $User@$MiPC" })
-                        }
-                    }
-                }
-            }
-        }
-    } catch {
-        # Si se corta internet, espera 3 segundos antes de continuar
-        Start-Sleep -Seconds 3
-    }
-    Start-Sleep -Seconds 2
-}
+Write-Host "`n[+] Si ves esto y te llegó el mensaje, la conexión fue exitosa." -ForegroundColor Green

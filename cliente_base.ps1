@@ -6,16 +6,17 @@ $ChatID = "1018796719"                                    # Tu ChatID numérico 
 
 
 $URL    = "https://api.telegram.org"
+
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
 
 Write-Host "Iniciando prueba de conexión forzada a Telegram..." -ForegroundColor Cyan
 
-# Habilitar protocolos TLS 1.2 obligatorios
+# Habilitar protocolos TLS 1.2 obligatorios para Windows 10
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Intentar el envío SIN bloques TRY/CATCH para que muestre el error en rojo si falla
-$MensajeInicio = "🚀 PRUEBA DIRECTA: $User@$MiPC"
+# Bloque de envío directo
+$MensajeInicio = "🚀 PRUEBA DIRECTA DESDE LA NUBE: $User@$MiPC"
 
 Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio }
 

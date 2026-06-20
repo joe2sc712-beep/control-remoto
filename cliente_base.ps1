@@ -12,6 +12,9 @@ $User   = $env:USERNAME
 # NO BORRAR #############################################################
 # ==============================================================================
 
+# ==============================================================================
+# CONFIGURACIÓN DEL BOT DE TELEGRAM 
+# ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
@@ -75,7 +78,7 @@ while ($true) {
                 }
 
                 # --- COMANDO GLOBAL MODIFICADO: /codigo ---
-                if ($Comando -eq "/ayuda") {
+                if ($Comando -eq "/codigo") {
                     # Enviamos comandos pre-armados en modo "copiar con un toque" para que solo tengas que pegar el nombre al final
                     $TextoAyuda = "📖 *PLANTILLAS DE CONTROL REMOTO*`n" +
                                   "_(Toca el comando azul para copiarlo, pégalo, deja un espacio y pega el nombre de la PC)_`n`n" +
@@ -120,6 +123,7 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
+
 
 
                 

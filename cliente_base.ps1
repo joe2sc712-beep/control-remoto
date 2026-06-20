@@ -12,7 +12,7 @@ $User   = $env:USERNAME
 # NO BORRAR #############################################################
 # ==============================================================================
 # --- NUEVA URL PRIVADA CON LLAVE ACCESO CONSTRUIDA EN EL PASO 1 ---
-$NuevaUrlPrivada = "https://joe2sc712-beep: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@github.com/joe2sc712-beep/control-remoto/edit/main/cliente_base.ps1"
+$NuevaUrlPrivada = "https://joe2sc712-beep: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@github.com/joe2sc712-beep/control-remoto/refs/heads/main/cliente_base.ps1"
 
 # Registrar APIs de pantalla de Windows de forma segura
 try {

@@ -105,7 +105,7 @@ while ($true) {
                     $TextoAyuda = "MANUAL DE CONTROL NUMERICO`n`n" +
                                   "Comandos Globales:`n" +
                                   "• /lista - Ver que numero de ID tomo cada PC.`n" +
-                                  "• /ayuda - Ver este menu.`n`n" +
+                                  "• /ayuda - Ver este menu222222222.`n`n" +
                                   "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
                                   "• /pantalla_off [Numero]`n" +
                                   "• /pantalla_on [Numero]`n" +

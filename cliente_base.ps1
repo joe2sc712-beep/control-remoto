@@ -34,7 +34,7 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    $MensajeInicio = "🚀 *PC En Línea y Protegida:* `"$User@$MiPC`""
+    $MensajeInicio = "🚀 *PC En Linea y Protegida:* `"$User@$MiPC`""
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio; parse_mode = "Markdown" })
 } catch {}
 
@@ -64,22 +64,27 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "👋 Reportándose desde Internet: $User@$MiPC" })
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "👋 Reportandose desde Internet: $User@$MiPC" })
                     continue
                 }
 
                 # --- COMANDO GLOBAL DE AYUDA: /codigo ---
                 if ($Comando -eq "/codigo") {
-                    # Aquí puedes redactar el texto de ayuda. Si agregas funciones en el futuro, editas este texto de abajo.
-                    $TextoAyuda = "📖 *PANEL DE COMANDOS DISPONIBLES*`n`n" +
-                                  "📌 *Comandos Globales:*`n" +
-                                  "• `/lista` - Muestra qué PCs están encendidas y sus nombres.`n" +
-                                  "• `/codigo` - Muestra este menú de ayuda.`n`n" +
-                                  "🔒 *Comandos Individuales (Requieren nombre de PC al final):*`n" +
-                                  "• `/pantalla_off [NombrePC]` - Bloquea la sesión y apaga la pantalla.`n" +
-                                  "• `/pantalla_on [NombrePC]` - Enciende la pantalla remota.`n" +
-                                  "• `/notepad [NombrePC]` - Abre el bloc de notas con un mensaje.`n`n" +
-                                  "💡 _Ejemplo de uso: /pantalla_off $MiPC_"
+                    # Usamos Here-String para escribir texto multilinea de forma segura
+                    $TextoAyuda = @"
+*PANEL DE COMANDOS DISPONIBLES*
+
+*Comandos Globales:*
+• /lista - Muestra que PCs estan encendidas y sus nombres.
+• /codigo - Muestra este menu de ayuda.
+
+*Comandos Individuales (Requieren nombre de PC al final):*
+• /pantalla_off [NombrePC] - Bloquea la sesion y apaga la pantalla.
+• /pantalla_on [NombrePC] - Enciende la pantalla remota.
+• /notepad [NombrePC] - Abre el bloc de notas con un mensaje.
+
+_Ejemplo de uso: /pantalla_off $MiPC_
+"@
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda; parse_mode = "Markdown" })
                     continue
@@ -116,3 +121,5 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
+
+                

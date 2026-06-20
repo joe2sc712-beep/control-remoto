@@ -11,6 +11,7 @@ $User   = $env:USERNAME
 # ==============================================================================
 # NO BORRAR #############################################################
 # ==============================================================================
+
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
@@ -39,7 +40,7 @@ try {
 } catch {}
 
 # ==============================================================================
-# BUCLE PRINCIPAL DE MONITOREO SEGURO
+# BUCLE PRINCIPAL DE MONITOREO SEGURO INTERACTIVO
 # ==============================================================================
 while ($true) {
     try {
@@ -62,29 +63,27 @@ while ($true) {
                     $Destino = ([string]$Partes[1]).ToUpper()
                 }
 
-                # --- COMANDO GLOBAL: /lista ---
+                # --- COMANDO GLOBAL MODIFICADO: /lista ---
                 if ($Comando -eq "/lista") {
-                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "👋 Reportandose desde Internet: $User@$MiPC" })
+                    # Al envolver el nombre de la PC entre acentos graves, Telegram lo vuelve "Tocado para Copiar"
+                    $RespuestaLista = "🖥️ *PC Activa:* `"$User`"`n" +
+                                      "📋 Nombre para copiar (Tócalo):`n" +
+                                      "`$MiPC`"
+                    
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista; parse_mode = "Markdown" })
                     continue
                 }
 
-                # --- COMANDO GLOBAL DE AYUDA: /codigo ---
-                if ($Comando -eq "/codigo") {
-                    # Usamos Here-String para escribir texto multilinea de forma segura
-                    $TextoAyuda = @"
-*PANEL DE COMANDOS DISPONIBLES*
-
-*Comandos Globales:*
-• /lista - Muestra que PCs estan encendidas y sus nombres.
-• /codigo - Muestra este menu de ayuda.
-
-*Comandos Individuales (Requieren nombre de PC al final):*
-• /pantalla_off [NombrePC] - Bloquea la sesion y apaga la pantalla.
-• /pantalla_on [NombrePC] - Enciende la pantalla remota.
-• /notepad [NombrePC] - Abre el bloc de notas con un mensaje.
-
-_Ejemplo de uso: /pantalla_off $MiPC_
-"@
+                # --- COMANDO GLOBAL MODIFICADO: /codigo ---
+                if ($Comando -eq "/ayuda") {
+                    # Enviamos comandos pre-armados en modo "copiar con un toque" para que solo tengas que pegar el nombre al final
+                    $TextoAyuda = "📖 *PLANTILLAS DE CONTROL REMOTO*`n" +
+                                  "_(Toca el comando azul para copiarlo, pégalo, deja un espacio y pega el nombre de la PC)_`n`n" +
+                                  "🔒 *Comandos disponibles:*`n" +
+                                  "• `/pantalla_off` ` `n" +
+                                  "• `/pantalla_on` ` `n" +
+                                  "• `/notepad` ` `n`n" +
+                                  "💡 _Tip: Primero escribe /lista, toca el nombre de la PC para copiarlo, luego escribe /codigo, toca el comando que quieras, pégalo y agrega el nombre de la PC._"
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda; parse_mode = "Markdown" })
                     continue
@@ -121,5 +120,6 @@ _Ejemplo de uso: /pantalla_off $MiPC_
     }
     Start-Sleep -Seconds 2
 }
+
 
                 

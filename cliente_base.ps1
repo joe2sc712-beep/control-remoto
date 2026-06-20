@@ -119,32 +119,6 @@ while ($true) {
                             $wsh.SendKeys("{SHIFT}")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                         }
-                        "/ip" {
-                            # 1. Obtener la IP Local (de tu red Wi-Fi o cable de red)
-                            $IPLocal = (Get-NetIPAddress -InterfaceAddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127*" -and $_.IPAddress -notlike "169*" }).IPAddress -join ", "
-                            if ($null -eq $IPLocal -or $IPLocal -eq "") { $IPLocal = "No detectada" }
-
-                            # 2. Obtener la IP Publica consultando un servidor de respaldo directo (api.ipify.org)
-                            $IPPublica = "Desconectado"
-                            try {
-                                $IPPublica = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 5).Trim()
-                            } catch {
-                                try { $IPPublica = (Invoke-RestMethod -Uri "https://ifconfig.me" -TimeoutSec 5).Trim() } catch {}
-                            }
-
-                            # 3. Armar el reporte de red plano
-                            $ReporteIP = "DATOS DE RED DE LA PC`n`n" +
-                                         "ID Numerico: [" + $MiIDNum + "]`n" +
-                                         "Equipo: " + $User + "@" + $MiPC + "`n`n" +
-                                         "• IP Local (Red): " + $IPLocal + "`n" +
-                                         "• IP Publica (Internet): " + $IPPublica
-
-                            # Enviar el reporte directamente a tu chat de Telegram
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = $ReporteIP })
-                        }
-
-
-                        
                         "/notepad" {
                             notepad.exe
                             Start-Sleep -Milliseconds 500

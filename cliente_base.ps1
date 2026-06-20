@@ -11,9 +11,9 @@ $User   = $env:USERNAME
 # ==============================================================================
 # NO BORRAR #############################################################
 # ==============================================================================
-# --- NUEVA URL PRIVADA CON LLAVE ACCESO CONSTRUIDA EN EL PASO 1 ---
-$NuevaUrlPrivada = "https://joe2sc712-beep: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@github.com/joe2sc712-beep/control-remoto/refs/heads/main/cliente_base.ps1"
-
+# ==============================================================================
+# CONFIGURACIÓN DEL BOT DE TELEGRAM 
+# ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
@@ -22,31 +22,6 @@ try {
 
 # Habilitar TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-# ==============================================================================
-# 🚀 AUTO-ACTUALIZADOR DEL LANZADOR LOCAL (Para no tocar las PCs a mano)
-# ==============================================================================
-try {
-    $RutaLanzadorLocal = "C:\ScriptCliente\cliente.ps1"
-    if (Test-Path $RutaLanzadorLocal) {
-        $ContenidoActual = Get-Content -Path $RutaLanzadorLocal -Raw
-        # Si el lanzador local no tiene la nueva URL privada, la sobrescribe automáticamente
-        if ($ContenidoActual -notlike "*$NuevaUrlPrivada*") {
-            $NuevoCodigoLanzador = @"
-`$UrlGitHub  = "$NuevaUrlPrivada"
-`$RutaLocal  = 'C:\ScriptCliente\cliente_base.ps1'
-try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri `$UrlGitHub -OutFile `$RutaLocal -TimeoutSec 10 -ErrorAction Stop
-} catch {}
-if (Test-Path `$RutaLocal) {
-    powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `$RutaLocal
-}
-"@
-            Set-Content -Path $RutaLanzadorLocal -Value $NuevoCodigoLanzador -Force
-        }
-    }
-} catch {}
 
 # ==============================================================================
 # LIMPIAR HISTORIAL ANTES DE INICIAR
@@ -67,7 +42,7 @@ try {
 } catch {}
 
 # ==============================================================================
-# BUCLE PRINCIPAL DE MONITOREO SEGURO INTERACTIVO
+# BUCLE PRINCIPAL CON SISTEMA DE IDS NUMÉRICOS CORREGIDO
 # ==============================================================================
 while ($true) {
     try {
@@ -80,15 +55,19 @@ while ($true) {
 
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
+                # CORRECCIÓN DE MATRIZ: Extraemos de forma segura el comando y el ID del argumento
                 $Partes = $TextoRecibido -split " "
-                $Comando = ([string]$Partes[0]).ToLower()
+                $Comando = [string]$Partes[0]
+                $Comando = $Comando.ToLower()
                 
                 $IDDestino = ""
                 if ($Partes.Count -gt 1) {
                     $IDDestino = [string]$Partes[1]
                 }
 
+                # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
+                    # Calcula un ID del 1 al 9 único y fijo para esta PC según su nombre
                     $LetrasPC = [char[]]$MiPC
                     $TotalAscii = 0
                     foreach ($Letra in $LetrasPC) { $TotalAscii += [int]$Letra }
@@ -101,11 +80,12 @@ while ($true) {
                     continue
                 }
 
+                # --- COMANDO GLOBAL DE AYUDA: /ayuda ---
                 if ($Comando -eq "/ayuda") {
                     $TextoAyuda = "MANUAL DE CONTROL NUMERICO`n`n" +
                                   "Comandos Globales:`n" +
                                   "• /lista - Ver que numero de ID tomo cada PC.`n" +
-                                  "• /ayuda - Ver este menu222222222.`n`n" +
+                                  "• /ayuda - Ver este menu.`n`n" +
                                   "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
                                   "• /pantalla_off [Numero]`n" +
                                   "• /pantalla_on [Numero]`n" +
@@ -116,6 +96,7 @@ while ($true) {
                     continue
                 }
 
+                # CALCULAR MI PROPIO ID PARA COMPARAR
                 $MisLetras = [char[]]$MiPC
                 $MiAscii = 0
                 foreach ($M in $MisLetras) { $MiAscii += [int]$M }
@@ -123,6 +104,7 @@ while ($true) {
                 if ($MiSeed -eq 0) { $MiSeed = 1 }
                 $MiIDNum = [string]$MiSeed
 
+                # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                     
                     switch ($Comando) {

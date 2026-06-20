@@ -12,9 +12,6 @@ $User   = $env:USERNAME
 # NO BORRAR #############################################################
 # ==============================================================================
 
-# ==============================================================================
-# CONFIGURACIÓN DEL BOT DE TELEGRAM 
-# ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
@@ -38,8 +35,8 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    $MensajeInicio = "🚀 *PC En Linea y Protegida:* `"$User@$MiPC`""
-    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio; parse_mode = "Markdown" })
+    $MensajeInicio = "PC En Linea y Protegida: " + $User + "@" + $MiPC
+    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio })
 } catch {}
 
 # ==============================================================================
@@ -58,35 +55,32 @@ while ($true) {
                 
                 # Procesamiento seguro de comandos
                 $Partes = $TextoRecibido -split " "
-                $Comando = ([string]$Partes[0]).ToLower()
+                $Comando = ([string]$Partes).ToLower()
                 
                 # Seguro anti-accidentes (Requiere obligatoriamente el nombre de la PC)
                 $Destino = ""
                 if ($Partes.Count -gt 1) {
-                    $Destino = ([string]$Partes[1]).ToUpper()
+                    $Destino = ([string]$Partes).ToUpper()
                 }
 
-                # --- COMANDO GLOBAL MODIFICADO: /lista ---
+                # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    # Al envolver el nombre de la PC entre acentos graves, Telegram lo vuelve "Tocado para Copiar"
-                    $RespuestaLista = "🖥️ *PC Activa:* `"$User`"`n" +
-                                      "📋 Nombre para copiar (Tócalo):`n" +
-                                      "`$MiPC`"
-                    
+                    $RespuestaLista = "PC Activa: " + $User + "`nNombre para copiar (Tocalo):`n`"" + $MiPC + "`""
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista; parse_mode = "Markdown" })
                     continue
                 }
 
-                # --- COMANDO GLOBAL MODIFICADO: /codigo ---
-                if ($Comando -eq "/codigo") {
-                    # Enviamos comandos pre-armados en modo "copiar con un toque" para que solo tengas que pegar el nombre al final
-                    $TextoAyuda = "📖 *PLANTILLAS DE CONTROL REMOTO*`n" +
-                                  "_(Toca el comando azul para copiarlo, pégalo, deja un espacio y pega el nombre de la PC)_`n`n" +
-                                  "🔒 *Comandos disponibles:*`n" +
-                                  "• `/pantalla_off` ` `n" +
-                                  "• `/pantalla_on` ` `n" +
-                                  "• `/notepad` ` `n`n" +
-                                  "💡 _Tip: Primero escribe /lista, toca el nombre de la PC para copiarlo, luego escribe /codigo, toca el comando que quieras, pégalo y agrega el nombre de la PC._"
+                # --- COMANDO GLOBAL DE AYUDA MODIFICADO: /ayuda ---
+                if ($Comando -eq "/ayuda") {
+                    $TextoAyuda = "MANUAL DE COMANDOS`n`n" +
+                                  "Comandos Globales:`n" +
+                                  "• /lista - Ver PCs encendidas.`n" +
+                                  "• /ayuda - Ver este menu.`n`n" +
+                                  "Comandos Individuales (Toca, pega, deja espacio y pega nombre PC):`n" +
+                                  "• `/pantalla_off`` `n" +
+                                  "• `/pantalla_on`` `n" +
+                                  "• `/notepad`` `n`n" +
+                                  "Ejemplo: /notepad " + $MiPC
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda; parse_mode = "Markdown" })
                     continue
@@ -100,19 +94,19 @@ while ($true) {
                             $rundll = New-Object -ComObject WScript.Shell
                             $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
                             [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Pantalla apagada en $MiPC" })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla apagada" })
                         }
                         "/pantalla_on" {
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("{SHIFT}")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Pantalla encendida en $MiPC" })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida" })
                         }
                         "/notepad" {
                             notepad.exe
                             Start-Sleep -Milliseconds 500
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "✅ Bloc de notas abierto en $MiPC" })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto" })
                         }
                     }
                 }

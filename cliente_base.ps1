@@ -95,7 +95,7 @@ while ($true) {
                         
                         "/cuenta" {
                             $wsh = New-Object -ComObject WScript.Shell
-                            for ($i = 60; $i -gt 0; $i--) {
+                            for ($i = 10; $i -gt 0; $i--) {
                                 $wsh.Popup("Faltan $i segundos para desbloquear la pantalla.", 1, "Cuenta Regresiva", 0 + 48 + 4096)
                             }
                         }

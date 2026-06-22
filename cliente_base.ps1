@@ -5,7 +5,7 @@ $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # REEMPLAZA CON TU TO
 $ChatID = "1018796719"                                    # REEMPLAZA CON TU CHAT ID REAL COMPLETO
 
 # para la auto-actualización (Misma que usa el cargador)
-$UrlGitHub  = "https://githubusercontent.com" 
+$UrlGitHub  = "https://raw.githubusercontent.com/joe2sc712-beep/control-remoto/refs/heads/main/cliente_base.ps1" 
 $RutaLocal  = "$PSScriptRoot\cliente_base.ps1"
 
 # Construcción de URL fija ultra-estable que acabamos de validar

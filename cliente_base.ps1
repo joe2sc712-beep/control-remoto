@@ -53,7 +53,7 @@ try {
 while ($true) {
     try {
         # 🔄 SISTEMA DE AUTO-ACTUALIZACIÓN CADA 15 MINUTOS 🔄
-        if ($Cronometro.Elapsed.TotalMinutes -ge 1) {
+        if ($Cronometro.Elapsed.TotalMinutes -ge 2) {
             try {
                 # Intenta descargar la nueva versión de GitHub
                 Invoke-WebRequest -Uri $UrlGitHub -OutFile $RutaLocal -TimeoutSec 10 -ErrorAction Stop

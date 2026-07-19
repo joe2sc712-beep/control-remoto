@@ -149,22 +149,23 @@ while ($true) {
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
                         }
-                        "/actualizar" {
-                            $Respuesta = "🔄 Actualizando script en ID $MiIDNum... Leyendo archivo nuevo."
+                                                "/actualizar" {
+                            $Respuesta = "🔄 Actualizando script en ID $MiIDNum... Recargando archivo en limpio."
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             
-                            # 1. Espera un segundo para asegurar que el mensaje de Telegram salga bien
+                            # 1. Espera un segundo para que el mensaje de Telegram salga correctamente
                             Start-Sleep -Seconds 1
                             
-                            # 2. Llama al lanzador invisible VBS para que vuelva a iniciar el script en limpio
-                            if (Test-Path "C:\ScriptCliente\lanzador.vbs") {
-                                Start-Process "wscript.exe" -ArgumentList "C:\ScriptCliente\lanzador.vbs"
-                            }
+                            # 2. Detecta automáticamente la ruta exacta de este archivo cliente.ps1
+                            $RutaScriptActual = $MyInvocation.MyCommand.Path
                             
-                            # 3. Mata el proceso actual de PowerShell para liberar la memoria vieja
-                            Stop-Process -Id $PID -Force
+                            # 3. Fuerza a la ventana actual a leer el nuevo código del disco duro inmediatamente
+                            & $RutaScriptActual
+                            
+                            # 4. Rompe el bucle de memoria viejo para que no deje procesos colgados
                             continue
                         }
+
 
                         "/notepad" {
                             Start-Process "notepad.exe"

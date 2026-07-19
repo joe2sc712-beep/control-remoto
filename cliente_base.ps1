@@ -53,7 +53,7 @@ while ($true) {
                 # 1. Separar el texto por espacios de forma estricta
                 $Partes = $TextoRecibido -split " "
                 
-                # FIX: Se restauraron los índices fijos indispensables para separar el texto
+                # SOLUCIONADO: Índices restaurados explícitamente para evitar caídas
                 $Comando = [string]$Partes[0]
                 $Comando = $Comando.ToLower()
                 
@@ -129,7 +129,7 @@ while ($true) {
                                 Start-Process "notepad.exe"
                                 Start-Sleep -Milliseconds 500
                                 
-                                # Copiar y pegar de forma limpia
+                                # Copiar y pegar el texto personalizado de forma limpia
                                 Set-Clipboard -Value $MensajePersonalizado
                                 $wsh = New-Object -ComObject WScript.Shell
                                 $wsh.SendKeys("^v")

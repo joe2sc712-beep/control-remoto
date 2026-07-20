@@ -148,24 +148,40 @@ while ($true) {
                             $Respuesta = "Volumen maximizado y frase reproducida en ID $MiIDNum"
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
-                        }                        "/actualizar" {
-                            $Respuesta = "🔄 Descargando última versión desde GitHub y reiniciando bot en ID $MiIDNum..."
+                        }                                                "/actualizar" {
+                            $Respuesta = "🔄 Forzando descarga limpia desde GitHub en ID $MiIDNum..."
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             
-                            # 1. Espera un segundo para que el mensaje de Telegram se envíe por completo
+                            # 1. Espera un segundo para que el mensaje de Telegram salga limpio
                             Start-Sleep -Seconds 1
                             
-                            # 2. Ejecuta el actualizador cliente.ps1 usando el VBS de la carpeta de Inicio
+                            # 2. TRUCO DE CACHÉ: Descarga el archivo fresco en vivo rompiendo el búfer de Windows
+                            $UrlGitHub = "https://githubusercontent.com"
+                            $RutaLocal = "$PSScriptRoot\cliente_base.ps1"
+                            
+                            try {
+                                # Le sumamos un número único basado en la hora actual al enlace (?v=123456)
+                                # Esto hace que Windows piense que es una web nueva y no use el caché viejo
+                                $UrlUnica = $UrlGitHub + "?v=" + (Get-Date -UFormat "%s")
+                                
+                                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                                Invoke-WebRequest -Uri $UrlUnica -OutFile $RutaLocal -TimeoutSec 10 -ErrorAction Stop
+                            } catch {
+                                # Si falla el internet o GitHub, mantiene tu copia local intacta y no rompe nada
+                            }
+
+                            # 3. Una vez descargado el nuevo código en el disco, ejecutamos tu flujo manual:
+                            # Llama a tu 'iniciar_cliente.vbs' para que limpie procesos y levante el nuevo archivo
                             $RutaInicio = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\iniciar_cliente.vbs"
                             if (Test-Path $RutaInicio) {
                                 Start-Process "wscript.exe" -ArgumentList "`"$RutaInicio`""
                             }
                             
-                            # 3. ELIMINACIÓN DE MEMORIA VIEJA: Mata al bot actual de inmediato
-                            # Esto deja el camino totalmente libre para que el nuevo script tome el control sin pisarse
+                            # 4. Destruye la memoria del proceso viejo de inmediato
                             Stop-Process -Id $PID -Force
                             continue
                         }
+
 
 
 

